@@ -9,7 +9,7 @@
 // would clash are commented out and come back on uninstall.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { activePalette, herdr, readConfig, writeConfig } from "./common.mjs";
 import { mix } from "./lib/palettes.mjs";
@@ -182,7 +182,7 @@ export function refresh() {
   return install();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const cmd = process.argv[2] ?? "install";
   const result =
     cmd === "uninstall" ? uninstall() : cmd === "refresh" ? refresh() : cmd === "print" ? { ok: true, message: apply("", activePalette()) } : install();

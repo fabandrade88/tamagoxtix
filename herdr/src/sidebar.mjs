@@ -3,6 +3,7 @@
 //   node sidebar.mjs install | uninstall | refresh | print
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { basename, dirname, join } from "node:path";
 import { activePalette, herdr, paintAll, readConfig, TOKEN, writeConfig } from "./common.mjs";
 import { ICONS, STATE_MARKERS } from "./lib/icons.mjs";
@@ -112,7 +113,7 @@ export function refresh() {
   return install();
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const cmd = process.argv[2] ?? "install";
   const result =
     cmd === "uninstall" ? uninstall() : cmd === "refresh" ? refresh() : cmd === "print" ? { ok: true, message: block() } : install();

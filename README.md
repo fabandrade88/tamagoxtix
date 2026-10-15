@@ -17,7 +17,7 @@ Two pieces, one repo:
 
 ![Between turns: the monster, your usage and your repo](docs/screenshots/idle.png)
 
-**38** monster bodies × **7** kinds of legs · **67** idle scenes · **81** work
+**38** monster bodies × **7** kinds of legs · **77** idle scenes · **91** work
 scenes · **12** palettes · GitHub and GitLab · zero dependencies
 
 ## What it does
@@ -38,14 +38,18 @@ acting out the turn, with time and tokens as bars:
 - **And IT life**: "this is fine", deploying on a Friday, trying to exit vim,
   force pushing to main, a merge conflict, a blue screen, `rm -rf` in the wrong
   folder, installing node_modules, tabs vs spaces, works on my machine…
+- **And the plant floor**: talking HART to a transmitter, wiring Ethernet-APL,
+  a radar level gauge, a Coriolis meter, stroking a control valve, tuning a PID
+  loop, calibrating a 4-20 mA loop, programming the PLC, a SCADA alarm…
 - **Time** fills a bar every minute and adds a `●` per minute.
 - **Tokens** fill a bar every 10k and add a `$` per 10k.
 
 ### Your monster, while Claude waits for you
 
 Between turns the monster lives above the prompt and does its own thing — naps,
-eats pizza, does the laundry, plays guitar, trains with a laser sword, hatches a
-dragon egg, plays football, goes to the bathroom — a new scene every 40 seconds.
+eats pizza, does the laundry, throws a party, plays the drums or the violin,
+trains with a laser sword, hatches a dragon egg, plays football, gets tired and
+yawns, goes to the bathroom — a new scene every 40 seconds.
 
 ![Idle scenes](docs/screenshots/scenes-idle.png)
 
@@ -95,7 +99,10 @@ Claude Code; `/tamaclaude theme off` goes back to your theme.
 
 `/tamaclaude statusline on` turns Claude Code's status line into oh-my-posh
 style segments in your palette: model, folder, git branch, context, the 5-hour
-and weekly limits and the session's time. `off` puts yours back.
+and weekly limits and the session's time. `off` puts yours back. The model
+leads in orange, the highlight every palette has.
+
+![The status line in four palettes](docs/screenshots/statusline.png)
 
 ### In herdr
 
@@ -112,8 +119,11 @@ than filled segments. `tamaclaude.theme-uninstall` restores your config exactly.
 
 **Requirements:** [Node.js](https://nodejs.org) 18+, Claude Code 2.1.300+ for the
 mod, [herdr](https://herdr.dev) 0.9.0+ for the plugin. A
-[Nerd Font](https://www.nerdfonts.com) (Omarchy ships one) for the repo icons;
-everything else is plain text. Nothing is downloaded or built at install time.
+[Nerd Font](https://www.nerdfonts.com) (Omarchy ships one) for the icons and
+the powerline arrows. Nothing is downloaded or built at install time.
+
+The Claude Code side is built on Claude Code's function hooks (mods), an
+early-access API that can change between Claude Code releases.
 
 ### Claude Code mod
 
@@ -129,8 +139,14 @@ or from a shell:
 claude plugin install tamaclaude --marketplace fabandrade88/tamaclaude
 ```
 
-Update with `claude plugin update tamaclaude`, remove with
-`claude plugin uninstall tamaclaude`.
+Update with `claude plugin update tamaclaude`. To remove it, first turn off
+what it set in your Claude Code settings, then uninstall:
+
+```
+/tamaclaude statusline off
+/tamaclaude theme off
+/plugin uninstall tamaclaude
+```
 
 ### herdr plugin
 
@@ -138,8 +154,13 @@ Update with `claude plugin update tamaclaude`, remove with
 herdr plugin install fabandrade88/tamaclaude/herdr --ref v1.0.0
 ```
 
-Leave out `--ref` to follow `main`. Update with `herdr plugin update tamaclaude`,
-remove with `herdr plugin uninstall tamaclaude`.
+Leave out `--ref` to follow `main`. Update with `herdr plugin update tamaclaude`.
+To remove it, restore herdr's look first, then uninstall:
+
+```sh
+herdr plugin action invoke tamaclaude.theme-uninstall
+herdr plugin uninstall tamaclaude
+```
 
 Bind the usage popup to a key in herdr's `config.toml`:
 
@@ -174,6 +195,17 @@ description = "token usage"
 
 Settings live in `~/.config/tamaclaude/config.json`, shared by both.
 
+## Troubleshooting
+
+- **A command shows an old usage line, or something new is missing** — the
+  session runs the version it loaded: run `/reload-plugins`.
+- **Squares instead of icons or arrows** — your terminal font has no Nerd Font
+  glyphs; switch to a [Nerd Font](https://www.nerdfonts.com).
+- **No limits in the bars** — Claude Code only reports them on Pro and Max plans,
+  after the session's first response.
+- **The herdr look after changing your Omarchy theme** — run
+  `herdr plugin action invoke tamaclaude.theme-refresh`.
+
 ## Development
 
 ```sh
@@ -192,6 +224,18 @@ Screenshots are real captures (`herdr pane read --ansi`) rendered with
 `scripts/ansi-to-svg.mjs`; `scripts/gallery.mjs` draws the scene grids.
 
 ## Changelog
+
+### 1.1.0
+
+- `/tamaclaude help`: every command, grouped, with what is on.
+- Powerline status line (`/tamaclaude statusline on`) and an orange highlight
+  in every palette.
+- The tamaclaude look for herdr: palette colors, a tab-bar status area with
+  icons and powerline separators, colored sidebar rows.
+- GitLab support with a pixel fox; a compact `/tamaclaude` usage card.
+- 77 idle and 91 work scenes: a party, instruments, getting tired, IT memes,
+  industrial instrumentation and automation.
+- Unit, security and performance checks; text from git remotes is sanitized.
 
 ### 1.0.0
 

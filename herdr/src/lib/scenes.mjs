@@ -9,7 +9,7 @@
 // herdr plugin and the mod.
 
 import { cellsToRuns, gridToCells, hashString, spriteGrid } from "./monsters.mjs";
-import { ART_MORE, IDLE_MORE, POOLS_MORE, WORK_MEMES, WORK_MORE } from "./scenes-more.mjs";
+import { ART_MORE, IDLE_MORE, IDLE_PARTY, POOLS_MORE, WORK_INDUSTRIAL, WORK_MEMES, WORK_MORE } from "./scenes-more.mjs";
 
 export const SCENE_WIDTH = 20; // pixels, one text column each
 export const SCENE_HEIGHT = 6; // pixels, two per text row
@@ -287,7 +287,7 @@ const IDLE = {
 };
 
 Object.assign(ART, ART_MORE);
-Object.assign(IDLE, IDLE_MORE);
+Object.assign(IDLE, IDLE_MORE, IDLE_PARTY);
 
 export const IDLE_SCENES = Object.keys(IDLE);
 
@@ -400,7 +400,7 @@ const WORK = {
   done: (t) => ({ pose: "done", fx: t % 4 < 2 ? ["✦", " ✧", "✦"] : [" ✧", "✦", " ✧"], fxSlot: "yellow", caption: "is done" }),
 };
 
-Object.assign(WORK, WORK_MORE, WORK_MEMES);
+Object.assign(WORK, WORK_MORE, WORK_MEMES, WORK_INDUSTRIAL);
 
 const TOOLS = ["hammer", "gears", "saw", "drill", "lab", "weld", "boxes", "mining", "bugnet", "roller", ...POOLS_MORE.tool];
 

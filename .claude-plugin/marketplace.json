@@ -1,14 +1,17 @@
 {
   "name": "tamaclaude",
+  "description": "Tamaclaude: a pixel monster for Claude Code, with usage charts, palettes and a powerline status line.",
   "owner": {
-    "name": "Fabricio"
+    "name": "Fabricio Oliveira de Andrade",
+    "url": "https://github.com/fabandrade88"
   },
   "plugins": [
     {
       "name": "tamaclaude",
       "source": "./claude",
-      "description": "A little pixel monster in place of the spinner, a visual timer, a stack of token coins, usage charts and Omarchy-style palettes.",
-      "version": "1.0.0"
+      "description": "A little pixel monster in place of the spinner, a usage card, palettes and a powerline status line.",
+      "version": "1.1.0",
+      "category": "productivity"
     }
   ]
 }

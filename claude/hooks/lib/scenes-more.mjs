@@ -8,6 +8,13 @@
 const cyc = (t, list, period = 1) => list[Math.floor(t / period) % list.length];
 const mid = (text) => ["", text, ""];
 const BLANK = ["", "", ""];
+
+function rising(glyphs, frame, period = 3) {
+  const step = Math.floor(frame / period) % (glyphs.length + 1);
+  const rows = ["", "", ""];
+  for (let i = 0; i < Math.min(step, glyphs.length); i++) rows[2 - i] = " ".repeat(i) + glyphs[i];
+  return rows;
+}
 const fill = (rows, n, ch) => rows.map((r, i) => (i < n ? r.replace(/\./g, ch) : r));
 
 export const ART_MORE = {
@@ -104,6 +111,27 @@ export const ART_MORE = {
   whale: ["o.y.g.", "cccccc", "cccccf", ".cccc."],
   bsod: ["uuuuuu", "ubbbbu", "ubfbbu", "uuuuuu", ".uu..."],
   sticker: ["uuuuuuu", "ugcccgu", "uuuuuuu", "uuuuuuu"],
+  // idle: party, tired, instruments
+  balloons: ["rr.bb", "rr.bb", ".u.u.", "..u.."],
+  pinata: ["..u..", "mmm..", "mmmm.", ".m.m."],
+  drums: ["y...y", "uuu.u", "uuu.u"],
+  trumpet: ["yy...", "yyyyy", "yy..."],
+  violin: ["..o.", ".oo.", "oooo", ".oo."],
+  sax: ["y...", "y...", "yy.y", "yyyy"],
+  xylophone: ["rrrrrr", "yyyyy.", "gggg..", "bbb..."],
+  bubbleWand: ["..u", ".u.", "u.."],
+  // work: industrial instrumentation and automation
+  transmitter: [".bbb.", "bfffb", ".bbb.", "..u..", ".uuu."],
+  communicator: ["uu", "uc", "uu"],
+  aplSwitchA: ["uuuuuu", "ugugug", "uuuuuu", "..y..."],
+  aplSwitchB: ["uuuuuu", "uauaua", "uuuuuu", "..y..."],
+  pipe: ["uuuuuuuu", "........", "uuuuuuuu"],
+  coriolis: ["u....u", "u....u", "uuuuuu"],
+  plcRack: ["uuuuuu", "ugurub", "uuuuuu", "uuuuuu"],
+  valveOpen: [".uuu.", "uuuuu", "..u..", "..u..", "yy.yy"],
+  valveShut: [".uuu.", "uuuuu", "..u..", "..u..", "yyuyy"],
+  calibrator: ["yyyy", "ycfy", "yyyy", "yuuy"],
+  scada: ["uuuuuu", "ug.r.u", "u.g.gu", "uuuuuu", "..uu.."],
 };
 
 export const IDLE_MORE = {
@@ -286,9 +314,57 @@ export const WORK_MEMES = {
   },
 };
 
+// A party, getting tired, and more instruments.
+export const IDLE_PARTY = {
+  party: (t) => ({ pose: "hop", props: [["balloons", 13, cyc(t, [0, 1])]], fx: cyc(t, [["✦", " *", "✧"], ["*", "✧", " ✦"], [" ✧", "✦", "*"]]), fxSlot: cyc(t, ["magenta", "yellow", "cyan"]), caption: "is throwing a party" }),
+  pinata: (t) => {
+    const hit = t % 6 === 3;
+    return { pose: hit ? "tool-use" : "idle", props: [["pinata", 14 + cyc(t, [0, 1, 0, -1]), 0]], fx: hit ? mid("whack") : t % 12 > 8 ? ["★", " ★", "★"] : BLANK, fxSlot: "yellow", caption: "is hitting a piñata" };
+  },
+  yawn: (t) => {
+    const p = t % 16;
+    return { pose: p < 6 ? "idle" : p < 10 ? "chew" : "sleep", fx: p >= 6 && p < 10 ? mid("yaawn") : p >= 10 ? rising(["z", "z"], t) : BLANK, fxSlot: "muted", caption: "is getting tired" };
+  },
+  stretch: (t) => ({ pose: t % 4 < 2 ? "hop" : "chew", fx: t % 8 < 4 ? mid("*stretch*") : BLANK, fxSlot: "fg", caption: "is stretching" }),
+  drums: (t) => ({ pose: "tool-use", props: [["drums", 13, 2]], fx: mid(cyc(t, ["ba", "dum", "tss"], 2)), fxSlot: "yellow", caption: "is playing the drums" }),
+  trumpet: (t) => ({ pose: t % 4 < 2 ? "chew" : "hop", props: [["trumpet", 11, 2]], fx: cyc(t, [mid("toot"), ["♪", "", ""], ["", " ♫", ""]]), fxSlot: "yellow", caption: "is playing the trumpet" }),
+  violin: (t) => ({ pose: "read", props: [["violin", 12, 1], [["uuu"], 12 + (t % 3), 0]], fx: cyc(t, [["♫", "", ""], ["", "♪", ""]], 2), fxSlot: "orange", caption: "is playing the violin" }),
+  sax: (t) => ({ pose: t % 4 < 2 ? "chew" : "idle", props: [["sax", 12, 2]], fx: cyc(t, [["♪", "", ""], [" ♪♪", "", ""], ["", "♫", ""]]), fxSlot: "yellow", caption: "is playing a sax solo" }),
+  xylophone: (t) => ({ pose: "tool-use", props: [["xylophone", 12, 2, { light: t % 6 }]], fx: mid(cyc(t, ["ding", "dong", "ding"])), fxSlot: "cyan", caption: "is playing the xylophone" }),
+  bubbles: (t) => ({ pose: t % 6 < 3 ? "chew" : "idle", props: [["bubbleWand", 11, 1]], fx: rising(["o", "O", "°"], t, 2), fxSlot: "cyan", caption: "is blowing bubbles" }),
+};
+
+// Industrial instrumentation and automation, mixed into the work pools.
+export const WORK_INDUSTRIAL = {
+  hart: (t) => ({ pose: "read", props: [["transmitter", 15, 0], ["communicator", 12, 2]], fx: mid(cyc(t, ["HART", "∿∿∿", "4-20"], 2)), fxSlot: "blue", caption: "is talking HART to a transmitter" }),
+  apl: (t) => ({ pose: "tool-use", props: [[cyc(t, ["aplSwitchA", "aplSwitchB"]), 13, 1]], fx: mid(cyc(t, ["APL", "10Mb", "2-wire"], 2)), fxSlot: "green", caption: "is wiring Ethernet-APL" }),
+  radarLevel: (t) => {
+    const level = 1 + (Math.floor(t / 3) % 4);
+    const tank = ["u.bb.u", ...Array.from({ length: 4 }, (_, i) => (4 - i <= level ? "uccccu" : "u....u")), "uuuuuu"];
+    return { pose: "read", props: [[tank, 13, 0]], fx: mid(`▼ ${level * 25}%`), fxSlot: "cyan", caption: "is reading a radar level gauge" };
+  },
+  pressure: (t) => ({ pose: "thinking", props: [["pipe", 12, 3], ["transmitter", 13, 0]], fx: mid(`${(4 + (t % 5) * 0.1).toFixed(1)} bar`), fxSlot: "blue", caption: "is checking a pressure transmitter" }),
+  coriolis: (t) => {
+    const path = [[0, 0], [0, 1], [1, 2], [2, 2], [3, 2], [4, 2], [5, 1], [5, 0]];
+    const [x, y] = cyc(t, path);
+    return { pose: "read", props: [["coriolis", 13, 1], [["c"], 13 + x, 1 + y]], fx: mid("kg/h"), fxSlot: "cyan", caption: "is measuring flow with a Coriolis meter" };
+  },
+  plc: (t) => ({ pose: "responding", props: [["plcRack", 13, 1, { light: t % 6 }]], fx: mid(cyc(t, ["-[ ]-", "-[/]-", "-( )-"], 2)), fxSlot: "green", caption: "is programming the PLC" }),
+  valve: (t) => {
+    const open = t % 8 < 4;
+    return { pose: "tool-use", props: [[open ? "valveOpen" : "valveShut", 14, 1]], fx: mid(open ? "OPEN 80%" : "20%"), fxSlot: "yellow", caption: "is stroking a control valve" };
+  },
+  pid: (t) => ({ pose: "thinking", fx: [cyc(t, ["SP ───", "SP ───"]), cyc(t, ["PV ╱╲╱", "PV ╲╱─", "PV ───"], 3), cyc(t, ["Kp Ti", "Kp Ti Td"], 4)], fxSlot: "accent", caption: "is tuning a PID loop" }),
+  calibrator: (t) => ({ pose: "read", props: [["calibrator", 13, 1]], fx: mid(cyc(t, ["4.00 mA", "12.00 mA", "20.00 mA"], 3)), fxSlot: "yellow", caption: "is calibrating a 4-20 mA loop" }),
+  scada: (t) => {
+    const alarm = t % 10 >= 7;
+    return { pose: alarm ? "blocked" : "read", props: [["scada", 13, 0]], fx: alarm ? mid("ALM!") : BLANK, fxSlot: "red", caption: alarm ? "acknowledges a SCADA alarm" : "is watching the SCADA screen" };
+  },
+};
+
 export const POOLS_MORE = {
-  requesting: ["smoke", "paperplane", "walkie", "lighthouse", "beacon", "friday", "offon", "thisisfine"],
-  thinking: ["abacus", "puzzle", "map", "compass", "hourglass", "maze", "sudoku", "math", "vim", "tabs", "notfound", "merge"],
-  tool: ["bricks", "screwdriver", "solder", "sewing", "crane", "printer3d", "anvil", "conveyor", "excavator", "rmrf", "docker", "kubernetes", "npm", "forcepush", "bsod"],
-  responding: ["stamp", "graffiti", "clapper", "neon", "fax", "notebook", "postits", "origami", "copypaste", "womm"],
+  requesting: ["smoke", "paperplane", "walkie", "lighthouse", "beacon", "friday", "offon", "thisisfine", "hart", "apl"],
+  thinking: ["abacus", "puzzle", "map", "compass", "hourglass", "maze", "sudoku", "math", "vim", "tabs", "notfound", "merge", "pid", "scada", "pressure"],
+  tool: ["bricks", "screwdriver", "solder", "sewing", "crane", "printer3d", "anvil", "conveyor", "excavator", "rmrf", "docker", "kubernetes", "npm", "forcepush", "bsod", "valve", "calibrator", "plc"],
+  responding: ["stamp", "graffiti", "clapper", "neon", "fax", "notebook", "postits", "origami", "copypaste", "womm", "radarLevel", "coriolis"],
 };
