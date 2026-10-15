@@ -155,3 +155,22 @@ test("an installed tamaclaude's config and state carry over to tamagoxtix once",
   process.env.XDG_CONFIG_HOME = join(root, "config");
   process.env.XDG_STATE_HOME = join(root, "state");
 });
+
+test("plain icons: no Nerd Font glyph in the status line or the herdr bar", async () => {
+  const nerd = /[-\u{f0000}-\u{fffff}]/u;
+  mkdirSync(join(root, "config", "tamagoxtix"), { recursive: true });
+  writeFileSync(join(root, "config", "tamagoxtix", "config.json"), JSON.stringify({ palette: "beach", icons: "plain" }));
+  const script = new URL("../claude/scripts/statusline.mjs", import.meta.url).pathname;
+  const input = { model: { display_name: "Opus" }, workspace: { current_dir: root }, context_window: { used_percentage: 10 }, rate_limits: { five_hour: { used_percentage: 5 } } };
+  const res = spawnSync(process.execPath, [script], { input: JSON.stringify(input), encoding: "utf8", env: { ...process.env } });
+  assert.equal(res.status, 0, res.stderr);
+  assert.ok(!nerd.test(res.stdout), "status line has no private-use glyphs");
+  assert.match(res.stdout, /◆ Opus/);
+  const { apply } = await import("../herdr/src/theme.mjs");
+  const { resolvePalette } = await import("../herdr/src/lib/palettes.mjs");
+  const themed = apply("[ui]\n", resolvePalette("beach"));
+  assert.ok(!nerd.test(themed), "herdr bar has no private-use glyphs");
+  assert.match(themed, /tab_bar_right_separator = " {2}│ {2}"/);
+  writeFileSync(join(root, "config", "tamagoxtix", "config.json"), JSON.stringify({ palette: "beach" }));
+  assert.match(apply("[ui]\n", resolvePalette("beach")), //, "nerd by default");
+});

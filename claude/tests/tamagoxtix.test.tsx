@@ -212,6 +212,47 @@ describe('tamagoxtix', () => {
     expect(settings).toEqual({ model: 'opus', permissions: { allow: ['Bash(ls)'] }, theme: 'dark' })
   })
 
+  test('/tamagoxtix doctor reports what is there and what is missing', async ($, on) => {
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    on('process.run', ($, e) => {
+      const [cmd] = e.argv
+      if (cmd === 'node') return { value: { exitCode: 0, stdout: 'v16.20.0\n', stderr: '' } }
+      if (cmd === 'git') return { value: { exitCode: 0, stdout: 'git version 2.47.0\n', stderr: '' } }
+      throw new Error('ENOENT')
+    })
+    await $.session.start(START)
+    const result = await $.command.run({ command: 'tamagoxtix', args: 'doctor', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+    expect(result.text).toContain('✖ Node.js 18+')
+    expect(result.text).toContain('install: https://nodejs.org')
+    expect(result.text).toContain('✔ git')
+    expect(result.text).toContain('○ gh (GitHub CLI)')
+    expect(result.text).toContain('/tamagoxtix icons plain')
+  })
+
+  test('without node the idle band says how to get the usage numbers', async ($, on) => {
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    on('process.run', () => {
+      throw new Error('ENOENT')
+    })
+    await $.session.start(START)
+    await $.command.run({ command: 'tamagoxtix', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+    const band = await $.ui.mount({
+      plugin: 'tamagoxtix',
+      surface: 'terminal',
+      component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100 } as never,
+    })
+    await band.advance(320)
+    expect(await band.find({ in: 'tamagoxtix-idle', type: 'Text', text: /install Node\.js 18\+/ })).toBeDefined()
+    await band.unmount()
+  })
+
   test('/tamagoxtix palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })

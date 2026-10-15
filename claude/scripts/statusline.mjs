@@ -11,7 +11,7 @@ import { basename, join } from "node:path";
 
 import { clean } from "./forge.mjs";
 import { OMARCHY_COLORS_PATH, resolvePalette } from "./palettes.mjs";
-import { GLYPH, levelColor, powerline } from "./powerline.mjs";
+import { GLYPH as NERD, levelColor, PLAIN, powerline } from "./powerline.mjs";
 
 function readStdin() {
   try {
@@ -21,12 +21,17 @@ function readStdin() {
   }
 }
 
-function palette() {
+function config() {
   const configHome = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
-  let choice = "beach";
   try {
-    choice = JSON.parse(readFileSync(join(configHome, "tamagoxtix", "config.json"), "utf8")).palette ?? choice;
-  } catch {}
+    return JSON.parse(readFileSync(join(configHome, "tamagoxtix", "config.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function palette() {
+  const choice = config().palette ?? "beach";
   let omarchy;
   try {
     omarchy = readFileSync(join(homedir(), OMARCHY_COLORS_PATH), "utf8");
@@ -46,6 +51,9 @@ function duration(ms) {
 
 const input = readStdin();
 const p = palette();
+// plain symbols when there is no Nerd Font (/tamagoxtix icons plain)
+const plain = (config().icons ?? "nerd") !== "nerd";
+const GLYPH = plain ? PLAIN : NERD;
 const cwd = input.workspace?.current_dir ?? input.cwd ?? process.cwd();
 const segments = [];
 
@@ -73,4 +81,4 @@ if (typeof week === "number") segments.push({ text: `${GLYPH.week} wk ${Math.rou
 const ms = input.cost?.total_duration_ms;
 if (typeof ms === "number") segments.push({ text: `${GLYPH.clock} ${duration(ms)}`, color: p.muted });
 
-process.stdout.write(powerline(segments, p) + "\n");
+process.stdout.write(powerline(segments, p, { plain }) + "\n");

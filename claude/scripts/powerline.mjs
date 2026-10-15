@@ -21,6 +21,18 @@ export const GLYPH = {
   clock: "\u{f0150}", // 󰅐
 };
 
+// The same segments without a Nerd Font: symbols every font draws, and the
+// segments meet edge to edge instead of through an arrow.
+export const PLAIN = {
+  model: "◆",
+  folder: "▸",
+  branch: "⎇",
+  context: "◔",
+  gauge: "◑",
+  week: "▦",
+  clock: "◷",
+};
+
 const fg = (hex) => `\x1b[38;2;${hexToRgb(hex).join(";")}m`;
 const bg = (hex) => `\x1b[48;2;${hexToRgb(hex).join(";")}m`;
 const RESET = "\x1b[0m";
@@ -34,13 +46,14 @@ const BOLD = "\x1b[1m";
  * @param {{ bg: string, fg: string }} palette
  * @param {{ round?: boolean }} [options]
  */
-export function powerline(segments, palette, { round = true } = {}) {
+export function powerline(segments, palette, { round = true, plain = false } = {}) {
   const parts = segments.filter((s) => s && s.text);
   if (!parts.length) return "";
   const ink = mix(palette.bg, "#000000", 0.2);
-  let out = round ? `${fg(parts[0].color)}${GLYPH.capLeft}` : "";
+  let out = round && !plain ? `${fg(parts[0].color)}${GLYPH.capLeft}` : "";
   parts.forEach((seg, i) => {
     out += `${bg(seg.color)}${fg(ink)}${seg.bold ? BOLD : ""} ${seg.text} ${RESET}`;
+    if (plain) return;
     const next = parts[i + 1];
     if (next) out += `${bg(next.color)}${fg(seg.color)}${GLYPH.arrow}`;
     else out += `${fg(seg.color)}${round ? GLYPH.capRight : GLYPH.arrow}`;

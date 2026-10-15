@@ -22,6 +22,8 @@ export type IdleProps = {
   columns: number
   /** "nerd" draws Nerd Font icons, anything else plain symbols. */
   icons: string
+  /** `node` could not be started, so there are no usage numbers. */
+  nodeMissing: boolean
 }
 
 // GitHub glyphs: octicons from a Nerd Font, or plain symbols without one.
@@ -183,6 +185,9 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
           <Text mono color={palette.fg}> {data.caption}</Text>
         </Text>
         <Text mono color={palette.muted}>waiting for you · idle {formatIdle(now - props.idleSince)}</Text>
+        {props.nodeMissing ? (
+          <Text mono color={palette.orange}>install Node.js 18+ to see your usage · /tamagoxtix doctor</Text>
+        ) : (
         <Text mono>
           {props.todayTokens !== null && (
             <Text mono>
@@ -192,6 +197,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
           )}
           <Text mono color={palette.muted}>/tamagoxtix for stats</Text>
         </Text>
+        )}
       </Box>
       {showUsage && separator()}
       {showUsage && (

@@ -22,6 +22,7 @@ const limits = atom({ plugin: 'tamagoxtix', key: 'limits' } as const, [])
 const idleSince = atom({ plugin: 'tamagoxtix', key: 'idleSince' } as const, 0)
 const showPet = atom({ plugin: 'tamagoxtix', key: 'showPet' } as const, true)
 const github = atom({ plugin: 'tamagoxtix', key: 'github' } as const, null)
+const nodeMissing = atom({ plugin: 'tamagoxtix', key: 'nodeMissing' } as const, false)
 
 type Config = { palette?: string; sidebar?: boolean; [key: string]: unknown }
 
@@ -249,13 +250,60 @@ async function refreshGithub($: EngineInterface) {
 // ---- usage ----
 
 async function refreshUsage($: EngineInterface) {
+  let result: { exitCode: number; stdout: string } | null = null
   try {
-    const { exitCode, stdout } = await $.process.run(
-      ['node', `${$.plugin.root}/scripts/usage-node.mjs`, '--days', '14'],
-      { timeoutMs: 30_000 },
-    )
-    if (exitCode === 0) await update($, usage, () => JSON.parse(stdout) as TamaUsage)
+    result = await $.process.run(['node', `${$.plugin.root}/scripts/usage-node.mjs`, '--days', '14'], { timeoutMs: 30_000 })
+  } catch {
+    // `node` didn't start: say so where the numbers would be
+    await update($, nodeMissing, () => true)
+    return
+  }
+  await update($, nodeMissing, () => false)
+  try {
+    if (result.exitCode === 0) await update($, usage, () => JSON.parse(result.stdout) as TamaUsage)
   } catch {}
+}
+
+// ---- /tamagoxtix doctor: what TamaGoxtix needs, and what is missing ----
+
+type Check = { name: string; argv: string[]; required: boolean; why: string; install: string; ok?: (out: string) => boolean }
+
+const CHECKS: Check[] = [
+  {
+    name: 'Node.js 18+',
+    argv: ['node', '--version'],
+    required: true,
+    why: 'usage numbers, the usage card and the status line',
+    install: 'https://nodejs.org · brew install node · sudo apt install nodejs · sudo pacman -S nodejs · winget install OpenJS.NodeJS',
+    ok: out => Number(out.replace(/^v/, '').split('.')[0]) >= 18,
+  },
+  { name: 'git', argv: ['git', '--version'], required: true, why: 'the repo column', install: 'https://git-scm.com' },
+  { name: 'gh (GitHub CLI), signed in', argv: ['gh', 'auth', 'status'], required: false, why: 'CI runs, pull requests and private GitHub repos', install: 'https://cli.github.com, then gh auth login' },
+  { name: 'glab (GitLab CLI)', argv: ['glab', '--version'], required: false, why: 'pipelines, merge requests and private GitLab projects', install: 'https://gitlab.com/gitlab-org/cli' },
+]
+
+async function doctorText($: EngineInterface): Promise<string> {
+  const lines = ['TamaGoxtix doctor', '']
+  for (const check of CHECKS) {
+    let found = false
+    let version = ''
+    try {
+      const { exitCode, stdout, stderr } = await $.process.run(check.argv, { timeoutMs: 5000 })
+      version = (stdout || stderr).trim().split('\n')[0] ?? ''
+      found = exitCode === 0 && (check.ok ? check.ok(version) : true)
+    } catch {}
+    const mark = found ? '✔' : check.required ? '✖' : '○'
+    lines.push(`${mark} ${check.name}${found && version && check.argv[1] === '--version' ? `  (${version})` : ''}`)
+    if (!found) lines.push(`    needed for ${check.why}${check.required ? '' : ' (optional)'}`, `    install: ${check.install}`)
+  }
+  const icons = String((await readConfig($)).icons ?? 'nerd')
+  lines.push(
+    '',
+    `Icons: ${icons === 'nerd' ? 'Nerd Font' : 'plain symbols'} (/tamagoxtix icons nerd|plain)`,
+    'Nerd Font check, these should be icons, not boxes:   \u{f167a}  \u{f024b}  \uf418  \u{f09d1}  \ue0b0 \ue0b1',
+    'Boxes? Install a Nerd Font (https://www.nerdfonts.com) and pick it in your terminal, or run /tamagoxtix icons plain.',
+  )
+  return lines.join('\n')
 }
 
 function formatTokens(n: number): string {
@@ -507,6 +555,7 @@ async function helpSections($: EngineInterface): Promise<HelpSection[]> {
         { command: '/tamagoxtix palette omarchy', does: 'follow your Omarchy theme' },
         { command: '/tamagoxtix theme on|off', does: 'chat colors from the palette', state: chatTheme },
         { command: '/tamagoxtix statusline on|off', does: 'powerline status line', state: statusline },
+        { command: '/tamagoxtix icons nerd|plain', does: 'Nerd Font icons, or plain symbols any font has', state: config.icons !== 'plain' && config.icons !== 'emoji' },
       ],
     },
     {
@@ -518,7 +567,10 @@ async function helpSections($: EngineInterface): Promise<HelpSection[]> {
     },
     {
       title: 'usage',
-      rows: [{ command: '/tamagoxtix', does: 'the usage card: today, session, week, limits, charts' }],
+      rows: [
+        { command: '/tamagoxtix', does: 'the usage card: today, session, week, limits, charts' },
+        { command: '/tamagoxtix doctor', does: 'check Node.js, git, gh, glab and the font' },
+      ],
     },
     {
       title: 'herdr  (herdr plugin action invoke …)',
@@ -569,7 +621,7 @@ export const register: Register = on => {
     await $.command.register({
       name: 'tamagoxtix',
       description: 'Token usage charts, palettes and your monster',
-      argumentHint: '[help | palette [name] | theme on|off | statusline on|off | pet on|off | reroll]',
+      argumentHint: '[help | doctor | palette [name] | theme on|off | statusline on|off | icons nerd|plain | pet on|off | reroll]',
     })
     return started
   })
@@ -728,6 +780,7 @@ export const register: Register = on => {
           week: thisWeek(data),
           github: repo,
           columns: e.props.bodyColumns,
+          nodeMissing: await read($, nodeMissing),
           icons: String((await readConfig($)).icons ?? 'nerd'),
         }}
       />
@@ -986,15 +1039,23 @@ export const register: Register = on => {
     }
 
     if (sub === 'icons') {
-      if (arg !== 'nerd' && arg !== 'emoji') return { text: 'Usage: /tamagoxtix icons nerd|emoji' }
+      if (arg !== 'nerd' && arg !== 'plain' && arg !== 'emoji') return { text: 'Usage: /tamagoxtix icons nerd|plain' }
       await writeConfig($, { icons: arg })
       if (await herdrPane($)) {
         try {
           await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.sidebar-refresh'])
+          await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.theme-refresh'])
         } catch {}
       }
-      return { text: `Sidebar icons: ${arg}.` }
+      return {
+        text:
+          arg === 'nerd'
+            ? 'Icons: Nerd Font (icons and powerline arrows). /tamagoxtix icons plain if you see boxes.'
+            : 'Icons: plain symbols that any font draws. /tamagoxtix icons nerd once a Nerd Font is set.',
+      }
     }
+
+    if (sub === 'doctor') return { text: await doctorText($) }
 
     return { text: `Unknown: ${sub}.\n\n${await helpText($)}` }
   })

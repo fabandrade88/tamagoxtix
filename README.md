@@ -115,6 +115,8 @@ Omarchy themes Claude Code. `off` goes back to your theme.
 | `/tamagoxtix palette [name]` | List the palettes, or switch |
 | `/tamagoxtix theme on` / `off` | Color the chat with the palette |
 | `/tamagoxtix statusline on` / `off` | The powerline status line |
+| `/tamagoxtix icons nerd` / `plain` | Nerd Font icons and arrows, or plain symbols any font draws |
+| `/tamagoxtix doctor` | Check Node.js, git, gh, glab and the font, with how to install what's missing |
 | `/tamagoxtix pet on` / `off` | Show or hide the monster between turns |
 | `/tamagoxtix reroll` | A new monster |
 
@@ -190,7 +192,10 @@ description = "token usage"
 **Requirements:** [Node.js](https://nodejs.org) 18+; Claude Code 2.1.300+ for the
 mod; [herdr](https://herdr.dev) 0.9.0+ for the plugin; a
 [Nerd Font](https://www.nerdfonts.com) (Omarchy ships one) for the icons and the
-powerline arrows. Nothing is downloaded or built at install time.
+powerline arrows, or `/tamagoxtix icons plain` for symbols any font draws.
+Nothing is downloaded or built at install time, and nothing is installed for
+you: after installing, `/tamagoxtix doctor` tells you what is missing and how
+to get it.
 
 The Claude Code side is built on Claude Code's function hooks (mods), an
 early-access API that can change between Claude Code releases.
@@ -247,7 +252,10 @@ herdr plugin uninstall tamaclaude
 - **A command shows an old usage line, or something new is missing** — the
   session runs the version it loaded: run `/reload-plugins`.
 - **Squares instead of icons or arrows** — your terminal font has no Nerd Font
-  glyphs; switch to a [Nerd Font](https://www.nerdfonts.com).
+  glyphs: pick a [Nerd Font](https://www.nerdfonts.com) in your terminal, or run
+  `/tamagoxtix icons plain`.
+- **No usage numbers** — the idle band says so when Node.js is missing;
+  `/tamagoxtix doctor` checks everything TamaGoxtix needs.
 - **No limits in the bars** — Claude Code reports them on Pro and Max plans, after
   the session's first response.
 - **herdr's colors don't change with its theme** — the look follows the palette:
@@ -271,6 +279,15 @@ folder. Screenshots are real captures (`herdr pane read --ansi`) rendered with
 `scripts/ansi-to-svg.mjs`; `scripts/gallery.mjs` draws the scene grids.
 
 ## Changelog
+
+### 2.0.1
+
+- `/tamagoxtix doctor`: checks Node.js, git, `gh`, `glab` and the font, and says
+  how to install what's missing.
+- `/tamagoxtix icons plain`: symbols every font draws, for the status line, the
+  repo column and the herdr bar, when there is no Nerd Font.
+- Without Node.js the idle band says how to get the usage numbers instead of
+  leaving them blank.
 
 ### 2.0.0
 

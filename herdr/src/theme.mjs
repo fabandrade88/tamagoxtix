@@ -52,11 +52,16 @@ export function themeKeys(p) {
   };
 }
 
+// Nerd Font icons and arrows, or plain symbols (/tamagoxtix icons plain)
+const nerdIcons = () => (readConfig().icons ?? "nerd") === "nerd";
+const separator = () => toml(nerdIcons() ? "  \ue0b1  " : "  │  ");
+
 function statusEntries() {
   const script = join(stateDir(), "herdr-bar", "status-bar.mjs");
   const run = (segment, interval) =>
     `{ type = "command", command = ${toml(`node "${script}" ${segment}`)}, interval_seconds = ${interval}, timeout_seconds = 3 }`;
-  return `[${[run("git", 5), run("tokens", 60), run("limits", 30), '{ type = "zoom" }', '{ type = "datetime", format = "\\uf017 %H:%M" }'].join(", ")}]`;
+  const clock = nerdIcons() ? '{ type = "datetime", format = "\\uf017 %H:%M" }' : '{ type = "datetime", format = "%H:%M" }';
+  return `[${[run("git", 5), run("tokens", 60), run("limits", 30), '{ type = "zoom" }', clock].join(", ")}]`;
 }
 
 // herdr's default sidebar rows, colored from the palette, Spaces in orange.
@@ -128,13 +133,13 @@ function upsertTable(lines, table, keys) {
 export function apply(text, p, { sidebar = true, colors = "herdr" } = {}) {
   const lines = strip(text).replace(/\n*$/, "").split("\n");
   if (colors !== "palette") {
-    upsertTable(lines, "ui", { tab_bar_right: statusEntries(), tab_bar_right_separator: toml("    ") });
+    upsertTable(lines, "ui", { tab_bar_right: statusEntries(), tab_bar_right_separator: separator() });
     return lines.join("\n") + "\n";
   }
   for (const [table, values] of Object.entries(themeKeys(p))) {
     upsertTable(lines, table, Object.fromEntries(Object.entries(values).map(([k, v]) => [k, toml(v)])));
   }
-  upsertTable(lines, "ui", { accent: toml(p.accent), tab_bar_right: statusEntries(), tab_bar_right_separator: toml("    ") });
+  upsertTable(lines, "ui", { accent: toml(p.accent), tab_bar_right: statusEntries(), tab_bar_right_separator: separator() });
   const hasOwnSidebar = lines.some((l) => /^\s*\[ui\.sidebar(\.|\])/.test(l)) || text.includes(SIDEBAR_MARK);
   if (sidebar && !hasOwnSidebar) lines.push("", BEGIN, ...sidebarTables(p), END);
   return lines.join("\n") + "\n";

@@ -5,11 +5,18 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-import { stateDir, summarize } from "./lib/usage-node.mjs";
+import { configDir, stateDir, summarize } from "./lib/usage-node.mjs";
 import { clean } from "./lib/forge.mjs";
 import { join } from "node:path";
 
-const ICON = { branch: "", gauge: "\u{f029a}", week: "\u{f0a33}", tokens: "\u{f01bc}" };
+// Nerd Font icons, or plain symbols (/tamagoxtix icons plain)
+const NERD = { branch: "\uf418", gauge: "\u{f029a}", week: "\u{f0a33}", tokens: "\u{f01bc}" };
+const PLAIN = { branch: "⎇", gauge: "◑", week: "▦", tokens: "$" };
+let iconSet = "nerd";
+try {
+  iconSet = JSON.parse(readFileSync(join(configDir(), "config.json"), "utf8")).icons ?? "nerd";
+} catch {}
+const ICON = iconSet === "nerd" ? NERD : PLAIN;
 
 function git(args) {
   const res = spawnSync("git", args, { encoding: "utf8", timeout: 1500 });

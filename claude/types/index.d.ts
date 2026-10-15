@@ -69,6 +69,8 @@ declare module 'claude-code' {
       /** Whether the idle band shows (/tamagoxtix pet on|off). */
       showPet: boolean
       github: TamaGithub | null
+      /** True when `node` could not be started: the usage numbers need it. */
+      nodeMissing: boolean
     }
   }
 }

@@ -8,7 +8,8 @@ GitHub or GitLab repo, and colors everything in one palette.
 /plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix
 ```
 
-Then `/tamagoxtix help` lists every command. Needs Claude Code 2.1.300+ (the
+Then `/tamagoxtix help` lists every command, and `/tamagoxtix doctor` checks
+what it needs (Node.js, git, a Nerd Font) — nothing is installed for you. Needs Claude Code 2.1.300+ (the
 plugin uses Claude Code's function hooks, an early-access API) and Node.js 18+.
 
 Screenshots, commands and details: [the main README](https://github.com/fabandrade88/tamagoxtix#readme).
