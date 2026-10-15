@@ -1,5 +1,6 @@
 {
   "name": "tamaclaude",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Tamaclaude: a herdr plugin and a Claude Code mod with little pixel monsters, token usage charts and palettes.",
@@ -8,5 +9,7 @@
     "check": "node scripts/sync-shared.mjs --check && claude plugin validate claude && herdr config check",
     "test": "node scripts/sync-shared.mjs --check && node --test tests/*.test.mjs && claude plugin test claude"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

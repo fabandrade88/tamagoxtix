@@ -1,5 +1,10 @@
 # tamaclaude
 
+[![release](https://img.shields.io/github/v/release/fabandrade88/tamaclaude?color=d97757)](https://github.com/fabandrade88/tamaclaude/releases)
+[![license](https://img.shields.io/github/license/fabandrade88/tamaclaude?color=7aa2f7)](LICENSE)
+![herdr plugin](https://img.shields.io/badge/herdr-plugin-9ece6a)
+![Claude Code mod](https://img.shields.io/badge/Claude%20Code-mod-bb9af7)
+
 A tiny pixel monster that lives in your terminal while you work with Claude Code.
 It acts out what Claude is doing, hangs out with you between turns, and keeps an
 eye on your token usage and your GitHub or GitLab repo.
@@ -11,6 +16,9 @@ Two pieces, one repo:
   [herdr](https://herdr.dev).
 
 ![Between turns: the monster, your usage and your repo](docs/screenshots/idle.png)
+
+**38** monster bodies × **7** kinds of legs · **67** idle scenes · **81** work
+scenes · **12** palettes · GitHub and GitLab · zero dependencies
 
 ## What it does
 
@@ -92,19 +100,36 @@ optionally, critter icons in the sidebar.
 
 ## Install
 
-Needs [Node.js](https://nodejs.org) 18+. Nothing is downloaded or built.
+**Requirements:** [Node.js](https://nodejs.org) 18+, Claude Code 2.1.300+ for the
+mod, [herdr](https://herdr.dev) 0.9.0+ for the plugin. A
+[Nerd Font](https://www.nerdfonts.com) (Omarchy ships one) for the repo icons;
+everything else is plain text. Nothing is downloaded or built at install time.
 
-**Claude Code mod**, at the prompt of a Claude Code session:
+### Claude Code mod
+
+At the prompt of a Claude Code session:
 
 ```
 /plugin install tamaclaude --marketplace fabandrade88/tamaclaude
 ```
 
-**herdr plugin**:
+or from a shell:
 
 ```sh
-herdr plugin install fabandrade88/tamaclaude/herdr
+claude plugin install tamaclaude --marketplace fabandrade88/tamaclaude
 ```
+
+Update with `claude plugin update tamaclaude`, remove with
+`claude plugin uninstall tamaclaude`.
+
+### herdr plugin
+
+```sh
+herdr plugin install fabandrade88/tamaclaude/herdr --ref v1.0.0
+```
+
+Leave out `--ref` to follow `main`. Update with `herdr plugin update tamaclaude`,
+remove with `herdr plugin uninstall tamaclaude`.
 
 Bind the usage popup to a key in herdr's `config.toml`:
 
@@ -124,6 +149,7 @@ description = "token usage"
 | `/tamaclaude palette [name]` | List palettes, or switch |
 | `/tamaclaude theme on` / `off` | Color the chat with the palette |
 | `/tamaclaude pet on` / `off` | Show or hide the monster between turns |
+| `/tamaclaude icon [name]` / `icons nerd\|emoji` | Pick the sidebar icon, or the icon set |
 | `/tamaclaude reroll` | A new monster |
 
 | herdr action | |
@@ -148,6 +174,18 @@ npm test
 carries its own copy because Claude Code and herdr install only their own folder.
 Screenshots are real captures (`herdr pane read --ansi`) rendered with
 `scripts/ansi-to-svg.mjs`; `scripts/gallery.mjs` draws the scene grids.
+
+## Changelog
+
+### 1.0.0
+
+First release.
+
+- Claude Code mod: the animated monster spinner with time and token bars, the
+  idle band with usage limits, this week's days and a GitHub/GitLab column, the
+  `/tamaclaude` usage card, palettes and an Omarchy-style chat theme.
+- herdr plugin: the usage popup, palettes, optional sidebar icons.
+- 38 bodies, 67 idle scenes, 81 work scenes (IT memes included).
 
 ## License
 

@@ -1,6 +1,6 @@
 id = "tamaclaude"
 name = "Tamaclaude"
-version = "0.1.0"
+version = "1.0.0"
 min_herdr_version = "0.9.0"
 description = "Little pixel monsters for your agents: animated sidebar faces, token usage charts and Omarchy-style palettes."
 platforms = ["linux", "macos", "windows"]

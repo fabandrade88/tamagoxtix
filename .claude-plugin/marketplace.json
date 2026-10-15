@@ -1,11 +1,14 @@
 {
   "name": "tamaclaude",
-  "owner": { "name": "Fabricio" },
+  "owner": {
+    "name": "Fabricio"
+  },
   "plugins": [
     {
       "name": "tamaclaude",
       "source": "./claude",
-      "description": "A little pixel monster in place of the spinner, a visual timer, a stack of token coins, usage charts and Omarchy-style palettes."
+      "description": "A little pixel monster in place of the spinner, a visual timer, a stack of token coins, usage charts and Omarchy-style palettes.",
+      "version": "1.0.0"
     }
   ]
 }
