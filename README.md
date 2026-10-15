@@ -155,6 +155,7 @@ description = "token usage"
 
 | Claude Code | |
 | --- | --- |
+| `/tamaclaude help` | Every command, and which ones are on |
 | `/tamaclaude` | Token usage card |
 | `/tamaclaude palette [name]` | List palettes, or switch |
 | `/tamaclaude theme on` / `off` | Color the chat with the palette |

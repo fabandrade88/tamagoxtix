@@ -94,6 +94,31 @@ describe('tamaclaude', () => {
     await ui.unmount()
   })
 
+  test('/tamaclaude help lists the commands and draws them as a card', async ($, on) => {
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    await $.session.start(START)
+    const result = await $.command.run({
+      command: 'tamaclaude',
+      args: 'help',
+      origin: { kind: 'composer' },
+      presentation: { isFullscreen: false, columns: 100 },
+    })
+    for (const part of ['palette <name>', 'theme on|off', 'statusline on|off', 'pet on|off', 'tamaclaude.palette-next']) {
+      expect(result.text).toContain(part)
+    }
+    const ui = await $.ui.mount({
+      plugin: 'tamaclaude',
+      surface: 'terminal',
+      component: 'CommandOutput',
+      props: { command: 'tamaclaude', args: 'help', text: result.text ?? '', isErrored: false } as never,
+    })
+    expect(await ui.find({ type: 'Text', text: /statusline on\|off/ })).toBeDefined()
+    await ui.unmount()
+  })
+
   test('/tamaclaude palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })

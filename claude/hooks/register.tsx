@@ -360,7 +360,7 @@ async function installStatuslineFiles($: EngineInterface): Promise<string> {
   return `${dir}/statusline.mjs`
 }
 
-type ClaudeSettings = { statusLine?: unknown; [key: string]: unknown }
+type ClaudeSettings = { statusLine?: unknown; theme?: unknown; [key: string]: unknown }
 
 async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
   const settingsPath = `${await claudeDir($)}/settings.json`
@@ -386,6 +386,89 @@ async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
     : 'Status line restored.'
 }
 
+// ---- chat colors: a Claude Code custom theme from the palette ----
+
+// /config takes only the built-in themes, so the theme is set in
+// settings.json the way Omarchy sets its own; Claude Code picks it up live.
+async function setChatTheme($: EngineInterface, on: boolean): Promise<string> {
+  const settingsPath = `${await claudeDir($)}/settings.json`
+  const settings = await readJson<ClaudeSettings>($, settingsPath, {})
+  const pal = (await read($, palette)) ?? (await loadPalette($))
+  if (on) {
+    await $.fs.write(`${await claudeDir($)}/themes/tamaclaude.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
+    const current = typeof settings.theme === 'string' ? settings.theme : undefined
+    if (current && current !== 'custom:tamaclaude') await writeConfig($, { previousTheme: current })
+    settings.theme = 'custom:tamaclaude'
+    await writeConfig($, { chatTheme: true })
+  } else {
+    const previous = (await readConfig($)).previousTheme
+    if (typeof previous === 'string' && previous) settings.theme = previous
+    else delete settings.theme
+    await writeConfig($, { chatTheme: false })
+  }
+  await $.fs.write(settingsPath, JSON.stringify(settings, null, 2) + '\n')
+  return on
+    ? `Chat colors follow the ${pal.label} palette. /tamaclaude theme off goes back.`
+    : 'Chat colors back to your previous theme.'
+}
+
+// ---- /tamaclaude help ----
+
+type HelpRow = { command: string; does: string; state?: boolean }
+type HelpSection = { title: string; rows: HelpRow[] }
+
+async function helpSections($: EngineInterface): Promise<HelpSection[]> {
+  const config = await readConfig($)
+  const settings = await readJson<ClaudeSettings>($, `${await claudeDir($)}/settings.json`, {})
+  const pal = (await read($, palette)) ?? (await loadPalette($))
+  const chatTheme = settings.theme === 'custom:tamaclaude'
+  const statusline = JSON.stringify(settings.statusLine ?? '').includes('tamaclaude')
+  const pet = await read($, showPet)
+  return [
+    {
+      title: `colors · palette: ${pal.label}`,
+      rows: [
+        { command: '/tamaclaude palette', does: 'list the palettes' },
+        { command: '/tamaclaude palette <name>', does: `switch: ${paletteChoices().join(' ')}` },
+        { command: '/tamaclaude palette omarchy', does: 'follow your Omarchy theme' },
+        { command: '/tamaclaude theme on|off', does: 'chat colors from the palette', state: chatTheme },
+        { command: '/tamaclaude statusline on|off', does: 'powerline status line', state: statusline },
+      ],
+    },
+    {
+      title: 'your monster',
+      rows: [
+        { command: '/tamaclaude pet on|off', does: 'the monster above the prompt', state: pet },
+        { command: '/tamaclaude reroll', does: 'a new monster' },
+      ],
+    },
+    {
+      title: 'usage',
+      rows: [{ command: '/tamaclaude', does: 'the usage card: today, session, week, limits, charts' }],
+    },
+    {
+      title: 'herdr  (herdr plugin action invoke …)',
+      rows: [
+        { command: 'tamaclaude.stats', does: 'usage popup · p switches palette' },
+        { command: 'tamaclaude.palette-next', does: 'next palette' },
+        { command: 'tamaclaude.theme-install|uninstall', does: 'the tamaclaude look for herdr', state: config.herdrTheme === true },
+      ],
+    },
+  ]
+}
+
+async function helpText($: EngineInterface): Promise<string> {
+  const lines = ['tamaclaude commands:']
+  for (const section of await helpSections($)) {
+    lines.push('', section.title)
+    for (const row of section.rows) {
+      const state = row.state === undefined ? '' : row.state ? ' [on]' : ' [off]'
+      lines.push(`  ${row.command.padEnd(36)} ${row.does}${state}`)
+    }
+  }
+  return lines.join('\n')
+}
+
 export const register: Register = on => {
   let mainTurn: string | null = null
   let lastPush = 0
@@ -402,7 +485,7 @@ export const register: Register = on => {
     await $.command.register({
       name: 'tamaclaude',
       description: 'Token usage charts, palettes and your monster',
-      argumentHint: '[stats | palette [name] | theme on|off | statusline on|off | pet on|off | reroll]',
+      argumentHint: '[help | palette [name] | theme on|off | statusline on|off | pet on|off | reroll]',
     })
     return started
   })
@@ -568,6 +651,46 @@ export const register: Register = on => {
     )
   })
 
+  // ---- /tamaclaude help: the commands as a card, with what is on ----
+
+  on('ui.render', { component: 'CommandOutput', props: { command: 'tamaclaude' } }, async ($, e, next) => {
+    const sub = e.props.args.trim().split(/\s+/)[0] ?? ''
+    if (sub !== 'help' || e.surface !== 'terminal' || e.props.isErrored) return next(e)
+    const { Box, Text } = $.ui.resolve(e)
+    const p = (await read($, palette)) ?? (resolvePalette('claude') as TamaPalette)
+    const sections = await helpSections($)
+    const width = Math.max(60, Math.min(96, (e.viewport?.columns ?? 100) - 4))
+    return (
+      <Box flexDirection="column" borderStyle="round" borderColor={p.muted} paddingX={2} width={width}>
+        <Text>
+          <Text color={p.orange} bold>
+            tamaclaude
+          </Text>
+          <Text color={p.muted}>  ·  help</Text>
+        </Text>
+        {sections.map(section => (
+          <Box flexDirection="column" marginTop={1}>
+            <Text>
+              <Text color={p.orange}>▍</Text>
+              <Text color={p.fg} bold>{` ${section.title}`}</Text>
+            </Text>
+            {section.rows.map(row => (
+              <Text>
+                <Text color={p.accent}>{`  ${row.command.padEnd(36)}`}</Text>
+                <Text color={p.muted}>{row.does}</Text>
+                {row.state !== undefined && (
+                  <Text color={row.state ? p.green : p.muted} bold={row.state}>
+                    {row.state ? '  ● on' : '  ○ off'}
+                  </Text>
+                )}
+              </Text>
+            ))}
+          </Box>
+        ))}
+      </Box>
+    )
+  })
+
   // ---- /tamaclaude: a usage card drawn in the transcript ----
 
   on('ui.render', { component: 'CommandOutput', props: { command: 'tamaclaude' } }, async ($, e, next) => {
@@ -695,7 +818,7 @@ export const register: Register = on => {
         {hourChart}
         <Text color={p.muted}>{hourLabels}</Text>
         <Text> </Text>
-        <Text color={p.muted}>/tamaclaude palette · theme · statusline · pet · reroll</Text>
+        <Text color={p.muted}>/tamaclaude help for all the commands</Text>
       </Box>
     )
   })
@@ -735,27 +858,11 @@ export const register: Register = on => {
     }
 
     if (sub === 'theme') {
-      const pal = (await read($, palette)) ?? (await loadPalette($))
-      await $.fs.write(
-        `${await claudeDir($)}/themes/tamaclaude.json`,
-        JSON.stringify(claudeTheme(pal), null, 2) + '\n',
-      )
-      if (arg === 'off') {
-        const saved = (await readConfig($)).previousTheme
-        const previous = (typeof saved === 'string' ? saved : undefined) ?? ((await $.store.get('previousTheme')) as string | undefined)
-        const result = await $.config.set({ key: 'theme', value: previous ?? 'dark' })
-        return { text: result.deny ? `Could not change the theme: ${result.deny}` : 'Chat colors back to your previous theme.' }
-      }
-      const rows = await $.config.list()
-      const current = rows.find(row => row.key === 'theme')?.value
-      if (typeof current === 'string' && current !== 'custom:tamaclaude') await $.store.set('previousTheme', current)
-      const result = await $.config.set({ key: 'theme', value: 'custom:tamaclaude' })
-      return {
-        text: result.deny
-          ? `Wrote ~/.claude/themes/tamaclaude.json but could not switch to it (${result.deny}). Pick "tamaclaude" in /theme.`
-          : `Chat colors now follow the ${pal.label} palette. /tamaclaude theme off to go back.`,
-      }
+      if (arg !== 'on' && arg !== 'off') return { text: 'Usage: /tamaclaude theme on|off' }
+      return { text: await setChatTheme($, arg === 'on') }
     }
+
+    if (sub === 'help') return { text: await helpText($) }
 
     if (sub === 'reroll' || sub === 'icon') {
       const key = await seedKey($)
@@ -806,7 +913,7 @@ export const register: Register = on => {
       return { text: `Sidebar icons: ${arg}.` }
     }
 
-    return { text: 'Usage: /tamaclaude [stats | palette [name] | theme on|off | statusline on|off | pet on|off | icon [name] | icons nerd|emoji | reroll]' }
+    return { text: `Unknown: ${sub}.\n\n${await helpText($)}` }
   })
 }
 
