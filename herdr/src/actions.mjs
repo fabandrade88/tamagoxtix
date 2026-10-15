@@ -18,6 +18,10 @@ switch (action) {
     const res = herdr(["plugin", "pane", "open", "--plugin", plugin, "--entrypoint", "icon-picker"]);
     process.exit(res.status ?? 1);
   }
+  case "palette-refresh": {
+    applyPalette(readConfig().palette ?? "omarchy");
+    break;
+  }
   case "palette-next": {
     const choices = paletteChoices();
     const current = readConfig().palette ?? "omarchy";

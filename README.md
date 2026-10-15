@@ -107,11 +107,16 @@ leads in orange, the highlight every palette has.
 ### In herdr
 
 The herdr plugin adds a usage popup (same numbers, `p` to switch palette) and
-an optional herdr look, `tamaclaude.theme-install`: herdr's colors from your
-palette, a status area right of the tabs (branch, tokens today, limits, clock)
-with icons and powerline separators, and palette colors on the sidebar rows.
-herdr has no background colors for these, so the arrows are separators rather
-than filled segments. `tamaclaude.theme-uninstall` restores your config exactly.
+an optional herdr look, `tamaclaude.theme-install`: a status area right of the
+tabs (branch, tokens today, limits, clock) with icons and powerline separators.
+
+Its colors come from **herdr's own theme** by default, so switching the theme in
+herdr recolors everything, Spaces and Agents included. With
+`tamaclaude.theme-follow-palette` herdr is painted in the tamaclaude palette
+instead (Spaces in its orange), and with the `omarchy` palette it follows each
+Omarchy theme change on its own; `tamaclaude.theme-follow-herdr` goes back.
+herdr has no background colors, so the arrows are separators rather than filled
+segments. `tamaclaude.theme-uninstall` restores your config exactly.
 
 ![herdr usage popup](docs/screenshots/herdr-stats.png)
 
@@ -198,6 +203,8 @@ description = "token usage"
 | --- | --- |
 | `tamaclaude.stats` | Token usage popup |
 | `tamaclaude.theme-install` / `theme-uninstall` | The tamaclaude look for herdr |
+| `tamaclaude.theme-follow-herdr` / `theme-follow-palette` | Its colors from herdr's theme (default) or from the palette |
+| `tamaclaude.palette-refresh` | Apply the palette again (run by the Omarchy hook) |
 | `tamaclaude.palette-next` | Next palette |
 | `tamaclaude.sidebar-install` / `sidebar-uninstall` | Critter icons in the sidebar (optional) |
 | `tamaclaude.icon` / `tamaclaude.reroll` | Pick or reroll the focused agent's icon |
@@ -212,8 +219,8 @@ Settings live in `~/.config/tamaclaude/config.json`, shared by both.
   glyphs; switch to a [Nerd Font](https://www.nerdfonts.com).
 - **No limits in the bars** — Claude Code only reports them on Pro and Max plans,
   after the session's first response.
-- **The herdr look after changing your Omarchy theme** — run
-  `herdr plugin action invoke tamaclaude.theme-refresh`.
+- **herdr's colors don't change with its theme** — the look is following the
+  palette: run `herdr plugin action invoke tamaclaude.theme-follow-herdr`.
 
 ## Development
 

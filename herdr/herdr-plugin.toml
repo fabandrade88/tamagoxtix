@@ -36,6 +36,21 @@ title = "Tamaclaude: restore herdr's own look"
 command = ["node", "src/theme.mjs", "uninstall"]
 
 [[actions]]
+id = "theme-follow-herdr"
+title = "Tamaclaude: herdr look takes its colors from herdr's theme"
+command = ["node", "src/theme.mjs", "follow-herdr"]
+
+[[actions]]
+id = "theme-follow-palette"
+title = "Tamaclaude: herdr look takes its colors from the tamaclaude palette"
+command = ["node", "src/theme.mjs", "follow-palette"]
+
+[[actions]]
+id = "palette-refresh"
+title = "Tamaclaude: apply the current palette again (after an Omarchy theme change)"
+command = ["node", "src/actions.mjs", "palette-refresh"]
+
+[[actions]]
 id = "theme-refresh"
 title = "Tamaclaude: recolor the herdr look"
 command = ["node", "src/theme.mjs", "refresh"]

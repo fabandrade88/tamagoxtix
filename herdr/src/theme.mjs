@@ -1,13 +1,14 @@
-// A herdr look in the tamaclaude palette: the theme's colors, a status area
-// right of the tabs with icons and powerline separators, and palette colors on
-// herdr's own sidebar rows. herdr has no background colors for these, so the
+// A herdr look: a status area right of the tabs with icons and powerline
+// separators, colored by herdr's own theme by default, or (follow-palette)
+// herdr's colors and sidebar rows painted in the tamaclaude palette. herdr has no background colors for these, so the
 // arrows are drawn as separators rather than filled segments.
 //   node theme.mjs install | uninstall | refresh | print
 //
 // config.toml keeps one table per name, so the keys go into the existing
 // [ui] and [theme.custom] tables between markers; keys of the person's that
 // would clash are commented out and come back on uninstall.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -121,8 +122,15 @@ function upsertTable(lines, table, keys) {
   lines.splice(start + 1, 0, ...block);
 }
 
-export function apply(text, p, { sidebar = true } = {}) {
+// `colors`: "herdr" leaves every color to herdr's own theme (switch it in
+// herdr and everything follows); "palette" paints herdr in the tamaclaude
+// palette, Spaces in its orange.
+export function apply(text, p, { sidebar = true, colors = "herdr" } = {}) {
   const lines = strip(text).replace(/\n*$/, "").split("\n");
+  if (colors !== "palette") {
+    upsertTable(lines, "ui", { tab_bar_right: statusEntries(), tab_bar_right_separator: toml("    ") });
+    return lines.join("\n") + "\n";
+  }
   for (const [table, values] of Object.entries(themeKeys(p))) {
     upsertTable(lines, table, Object.fromEntries(Object.entries(values).map(([k, v]) => [k, toml(v)])));
   }
@@ -130,6 +138,25 @@ export function apply(text, p, { sidebar = true } = {}) {
   const hasOwnSidebar = lines.some((l) => /^\s*\[ui\.sidebar(\.|\])/.test(l)) || text.includes(SIDEBAR_MARK);
   if (sidebar && !hasOwnSidebar) lines.push("", BEGIN, ...sidebarTables(p), END);
   return lines.join("\n") + "\n";
+}
+
+// ---- Omarchy: refresh the palette when its theme changes ----
+
+const OMARCHY_HOOK = join(homedir(), ".config", "omarchy", "hooks", "theme-set.d", "tamaclaude");
+const HOOK_SCRIPT = `#!/bin/bash
+# Installed by the tamaclaude herdr plugin: follow the new Omarchy theme.
+command -v herdr >/dev/null && herdr plugin action invoke tamaclaude.palette-refresh >/dev/null 2>&1 || true
+`;
+
+function omarchyHook(on) {
+  try {
+    if (on && existsSync(dirname(dirname(OMARCHY_HOOK)))) {
+      mkdirSync(dirname(OMARCHY_HOOK), { recursive: true });
+      writeFileSync(OMARCHY_HOOK, HOOK_SCRIPT, { mode: 0o755 });
+    } else if (!on && existsSync(OMARCHY_HOOK)) {
+      rmSync(OMARCHY_HOOK);
+    }
+  } catch {}
 }
 
 // ---- actions ----
@@ -159,10 +186,13 @@ export function install() {
   const current = existsSync(path) ? readFileSync(path, "utf8") : "";
   if (current && !current.includes(BEGIN)) copyFileSync(path, `${path}.tamaclaude-theme-backup`);
   copyStatusBar();
-  const result = write(apply(current, activePalette()), current);
+  const colors = readConfig().herdrColors === "palette" ? "palette" : "herdr";
+  const result = write(apply(current, activePalette(), { colors }), current);
   if (!result.ok) return result;
   writeConfig({ herdrTheme: true });
-  return { ok: true, message: `tamaclaude look on (${activePalette().label}). tamaclaude.theme-uninstall restores yours.` };
+  omarchyHook(colors === "palette" && readConfig().palette === "omarchy");
+  const how = colors === "palette" ? `colors from the ${activePalette().label} palette` : "colors from herdr's theme";
+  return { ok: true, message: `tamaclaude look on, ${how}. tamaclaude.theme-uninstall restores yours.` };
 }
 
 export function uninstall() {
@@ -173,7 +203,14 @@ export function uninstall() {
   const result = write(strip(current).replace(/\n*$/, "\n"), current);
   if (!result.ok) return result;
   writeConfig({ herdrTheme: false });
+  omarchyHook(false);
   return { ok: true, message: "herdr's own look is back." };
+}
+
+// Where the look takes its colors from: "herdr" or "palette".
+export function follow(colors) {
+  writeConfig({ herdrColors: colors });
+  return install();
 }
 
 // After a palette change: recolor, only when installed.
@@ -185,7 +222,17 @@ export function refresh() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const cmd = process.argv[2] ?? "install";
   const result =
-    cmd === "uninstall" ? uninstall() : cmd === "refresh" ? refresh() : cmd === "print" ? { ok: true, message: apply("", activePalette()) } : install();
+    cmd === "uninstall"
+      ? uninstall()
+      : cmd === "refresh"
+        ? refresh()
+        : cmd === "follow-herdr"
+          ? follow("herdr")
+          : cmd === "follow-palette"
+            ? follow("palette")
+            : cmd === "print"
+              ? { ok: true, message: apply("", activePalette(), { colors: readConfig().herdrColors }) }
+              : install();
   if (result.message) (result.ok ? console.log : console.error)(result.message);
   if (cmd !== "print" && result.message) herdr(["notification", "show", "Tamaclaude", "--body", result.message.split("\n")[0]]);
   process.exit(result.ok ? 0 : 1);

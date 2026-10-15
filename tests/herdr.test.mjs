@@ -74,11 +74,11 @@ test("the herdr look goes in and comes out without changing the person's config"
     '',
   ].join("\n");
   for (const id of Object.keys(PALETTES)) {
-    const themed = apply(original, resolvePalette(id));
+    const themed = apply(original, resolvePalette(id), { colors: "palette" });
     assert.equal(strip(themed).replace(/\n*$/, "\n"), original, id);
     assert.match(themed, /# tamaclaude-disabled: panel_bg = "black"/);
     assert.match(themed, /# tamaclaude-disabled: {3}\{ type = "hostname" \},/);
-    assert.equal(apply(themed, resolvePalette(id)), themed, `${id}: applying twice changes nothing`);
+    assert.equal(apply(themed, resolvePalette(id), { colors: "palette" }), themed, `${id}: applying twice changes nothing`);
     if (hasHerdr) {
       mkdirSync(join(root, "config", "herdr"), { recursive: true });
       writeFileSync(join(root, "config", "herdr", "config.toml"), themed);
@@ -106,4 +106,16 @@ test("the powerline status line draws every segment and survives empty input", (
   assert.equal(empty.status, 0);
   const hostile = spawnSync(process.execPath, [script], { input: JSON.stringify({ model: { display_name: "x\u001b]0;pwn\u0007" } }), encoding: "utf8" });
   assert.ok(!hostile.stdout.includes("\u001b]0;"), "no escape sequences from the input");
+});
+
+test("following herdr's theme writes no colors at all", async () => {
+  const { apply, strip } = await import("../herdr/src/theme.mjs");
+  const { resolvePalette } = await import("../herdr/src/lib/palettes.mjs");
+  const original = '[theme]\nname = "solarized"\n[ui]\naccent = "blue"\n';
+  const themed = apply(original, resolvePalette("nord"));
+  assert.ok(!/"#[0-9a-f]{6}"/.test(themed), "no hex colors");
+  assert.ok(!themed.includes("[theme.custom]") && !themed.includes("ui.sidebar"));
+  assert.match(themed, /tab_bar_right = \[/);
+  assert.match(themed, /^accent = "blue"$/m, "the person's accent stays");
+  assert.equal(strip(themed).replace(/\n*$/, "\n"), original);
 });

@@ -452,6 +452,8 @@ async function helpSections($: EngineInterface): Promise<HelpSection[]> {
         { command: 'tamaclaude.stats', does: 'usage popup · p switches palette' },
         { command: 'tamaclaude.palette-next', does: 'next palette' },
         { command: 'tamaclaude.theme-install|uninstall', does: 'the tamaclaude look for herdr', state: config.herdrTheme === true },
+        { command: 'tamaclaude.theme-follow-herdr', does: "its colors from herdr's theme", state: config.herdrColors !== 'palette' },
+        { command: 'tamaclaude.theme-follow-palette', does: 'its colors from the palette', state: config.herdrColors === 'palette' },
       ],
     },
   ]
@@ -513,10 +515,9 @@ export const register: Register = on => {
     // icons so no two agents share one): read it again each turn
     const pet = await loadMonster($)
     await update($, monster, () => pet)
-    if (!(await read($, palette))) {
-      const pal = await loadPalette($)
-      await update($, palette, () => pal)
-    }
+    // the palette too: an Omarchy theme change shows up on the next turn
+    const pal = await loadPalette($)
+    await update($, palette, () => pal)
     const pane = await herdrPane($)
     if (pane && (await readConfig($)).sidebar === true) {
       sidebarTimer?.cancel()
