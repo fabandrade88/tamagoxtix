@@ -1,39 +1,108 @@
 # tamaclaude
 
-Little pixel monsters for your coding agents, in the spirit of Claude Code's
-mascot. Every agent gets its own random critter, and it acts out what the agent
-is doing.
+A tiny pixel monster that lives in your terminal while you work with Claude Code.
+It acts out what Claude is doing, hangs out with you between turns, and keeps an
+eye on your token usage and your GitHub repo.
 
-This repository holds two pieces that work together:
+Two pieces, one repo:
 
-| Piece | Where it lives | What it does |
-| --- | --- | --- |
-| **herdr plugin** | [`herdr/`](herdr) | A critter icon per agent and per Space in [herdr](https://herdr.dev)'s sidebar (ghost, invader, alien, robot, cat, owl…), colored by palette and by state; a token usage popup with charts; palette switching. |
-| **Claude Code mod** | [`claude/`](claude) | Replaces the `✻ Coalescing… (1m 22s · ↓ 5.7k tokens)` line with the monster acting out the turn, a clock that fills as time passes and a stack of coins that grows with the tokens; a `/tamaclaude` usage pane; palettes for the chat colors. |
+- **Claude Code mod** ([`claude/`](claude)) — the monster in your chat.
+- **herdr plugin** ([`herdr/`](herdr)) — a token usage popup and palettes for
+  [herdr](https://herdr.dev).
 
-Both read the same palette and monster choices, so the critter in your sidebar
-is the one dancing in your chat.
+![Between turns: the monster, your usage and your repo](docs/screenshots/idle.png)
+
+## What it does
+
+### Your monster, while Claude works
+
+The usual `✻ Thinking… (12s · ↓ 1.2k tokens)` line is replaced by your monster
+acting out the turn, with time and tokens as bars:
+
+![Mining blocks while a tool runs](docs/screenshots/work-a.png)
+![Lighting a neon sign while the answer is written](docs/screenshots/work-b.png)
+
+- **What it does depends on what Claude does**, with a new scene every few seconds:
+  calling the API (laptop, satellite dish, paper airplane, lighthouse…),
+  thinking (chess, Rubik's cube, crystal ball, maze, abacus…),
+  using tools (hammer, saw, pickaxe, welding, 3D printer, crane…),
+  writing the answer (keyboard, typewriter, quill, piano, neon sign, graffiti…).
+- **Time** fills a bar every minute and adds a `●` per minute.
+- **Tokens** fill a bar every 10k and add a `$` per 10k.
+
+### Your monster, while Claude waits for you
+
+Between turns the monster lives above the prompt and does its own thing — naps,
+eats pizza, does the laundry, plays guitar, trains with a laser sword, hatches a
+dragon egg, plays football, goes to the bathroom — a new scene every 20 seconds.
+
+![Idle scenes](docs/screenshots/scenes-idle.png)
+
+Next to it:
+
+- **Usage** — your 5-hour and weekly limits as bars with the time until they
+  reset, and this week's tokens per day.
+- **GitHub** — when the project is on GitHub: repo, stars, last CI run, branch,
+  commits ahead/behind, changed files, version, open issues and PRs. Uses `gh`
+  when it's signed in, the public API otherwise.
+
+Narrow terminal? The GitHub column goes first, then usage.
+
+### Work scenes
+
+![Work scenes](docs/screenshots/scenes-work.png)
+
+### A monster of your own
+
+Every session gets its own critter: 38 body shapes (slime, bear, frog, ninja,
+viking, wizard, astronaut, sushi, dino…) × 7 kinds of legs × your palette's
+colors. Don't like yours? `/tamaclaude reroll`.
+
+### Token usage
+
+`/tamaclaude` opens a pane with today, the current 5-hour session and the week,
+your limits, the last 14 days and today by hour.
+
+![The /tamaclaude pane](docs/screenshots/stats.png)
+
+Numbers come from Claude Code's own transcripts in `~/.claude/projects` (each
+API response counted once) and the limit readings Claude Code receives
+(subscription plans). Nothing leaves your machine.
+
+### Palettes
+
+Everything is drawn in one palette, switchable at any time:
+`omarchy` (follows your active [Omarchy](https://omarchy.org) theme), `claude`,
+`tokyo-night`, `catppuccin`, `gruvbox`, `nord`, `everforest`, `kanagawa`,
+`rose-pine`, `osaka-jade`, `ristretto`, `matte-black`.
+
+`/tamaclaude theme on` also colors the chat itself, mapped the way Omarchy themes
+Claude Code; `/tamaclaude theme off` goes back to your theme.
+
+### In herdr
+
+The herdr plugin adds a usage popup (same numbers, `p` to switch palette) and,
+optionally, critter icons in the sidebar.
+
+![herdr usage popup](docs/screenshots/herdr-stats.png)
 
 ## Install
 
-Both pieces need [Node.js](https://nodejs.org) 18 or newer on your `PATH`.
-Nothing is downloaded or built at install time.
+Needs [Node.js](https://nodejs.org) 18+. Nothing is downloaded or built.
 
-### herdr plugin
+**Claude Code mod**, at the prompt of a Claude Code session:
 
-```sh
-herdr plugin install <owner>/tamaclaude/herdr
+```
+/plugin install tamaclaude --marketplace fabandrade88/tamaclaude
 ```
 
-Optionally, put critter icons in the sidebar instead of herdr's own state dots
-(this adds a marked block to herdr's `config.toml`, keeps a backup next to it,
-and checks it with `herdr config check`; `sidebar-uninstall` takes it out):
+**herdr plugin**:
 
 ```sh
-herdr plugin action invoke tamaclaude.sidebar-install
+herdr plugin install fabandrade88/tamaclaude/herdr
 ```
 
-Bind the usage popup to a key in `config.toml`:
+Bind the usage popup to a key in herdr's `config.toml`:
 
 ```toml
 [[keys.command]]
@@ -43,84 +112,38 @@ command = "tamaclaude.stats"
 description = "token usage"
 ```
 
-| Action | What it does |
+## Commands
+
+| Claude Code | |
 | --- | --- |
-| `tamaclaude.stats` | Token usage popup: today, the 5-hour session, the week, the last 14 days and today by hour. `p` switches palette, `r` refreshes, `q` closes. |
-| `tamaclaude.sidebar-install` / `sidebar-uninstall` | Add or remove the monster rows in the sidebar. |
-| `tamaclaude.palette-next` | Switch to the next palette. |
-| `tamaclaude.icon` | Choose the focused agent's icon from a list (`s` switches Nerd Font / emoji icons). |
-| `tamaclaude.reroll` | Give the focused agent a random new icon and monster. |
+| `/tamaclaude` | Token usage pane |
+| `/tamaclaude palette [name]` | List palettes, or switch |
+| `/tamaclaude theme on` / `off` | Color the chat with the palette |
+| `/tamaclaude pet on` / `off` | Show or hide the monster between turns |
+| `/tamaclaude reroll` | A new monster |
 
-### Claude Code mod
-
-At the prompt of a Claude Code session:
-
-```
-/plugin install tamaclaude --marketplace <owner>/tamaclaude
-```
-
-or from a shell:
-
-```sh
-claude plugin install tamaclaude --marketplace <owner>/tamaclaude
-```
-
-| Command | What it does |
+| herdr action | |
 | --- | --- |
-| `/tamaclaude` | Opens the token usage pane. |
-| `/tamaclaude palette [name]` | Lists palettes, or switches to one. |
-| `/tamaclaude theme on` / `off` | Colors the chat itself with the palette, mapped the way Omarchy themes Claude Code, or goes back to your previous theme. |
-| `/tamaclaude pet on` / `off` | Shows or hides the monster above the prompt between turns. |
-| `/tamaclaude icon [name]` | Lists the icons, or picks one for this session. |
-| `/tamaclaude icons nerd\|emoji` | Nerd Font icons (default) or emoji in the sidebar. |
-| `/tamaclaude reroll` | A random new icon and monster for this session. |
+| `tamaclaude.stats` | Token usage popup |
+| `tamaclaude.palette-next` | Next palette |
+| `tamaclaude.sidebar-install` / `sidebar-uninstall` | Critter icons in the sidebar (optional) |
+| `tamaclaude.icon` / `tamaclaude.reroll` | Pick or reroll the focused agent's icon |
 
-Between turns the monster hangs out above the prompt: it naps, snacks, sips
-coffee, plays ball, reads the docs or goes to the bathroom, a new scene every
-20 seconds. While Claude works it types on a keyboard, swings a hammer at tool
-calls, thinks in bubbles and pings a laptop.
-
-## Icons
-
-Every agent gets one of 13 critters, picked from its session so it stays the
-same across restarts. A working agent shows a spinner next to its icon (animated
-while Claude works when the mod is installed), a blocked one a red alert, a
-finished one a green check. The default icons need a
-[Nerd Font](https://www.nerdfonts.com) (Omarchy ships one); choose `emoji`
-anywhere else.
-
-## Palettes
-
-`omarchy` (the default) follows the active [Omarchy](https://omarchy.org) theme
-and falls back to `claude` elsewhere. Built in: `claude`, `tokyo-night`,
-`catppuccin`, `gruvbox`, `nord`, `everforest`, `kanagawa`, `rose-pine`,
-`osaka-jade`, `ristretto`, `matte-black`.
-
-The choice is saved in `~/.config/tamaclaude/config.json` and shared by both
-pieces.
-
-## Where the numbers come from
-
-Token counts are summed from Claude Code's own transcripts in
-`~/.claude/projects`, with each API response counted once. The 5-hour and weekly
-limit percentages are the ones Claude Code receives with each response
-(subscription plans only); the mod saves the latest reading to
-`~/.local/state/tamaclaude/limits.json` so the herdr popup can show it too.
-Nothing leaves your machine.
+Settings live in `~/.config/tamaclaude/config.json`, shared by both.
 
 ## Development
 
 ```sh
-herdr plugin link ./herdr            # run the herdr plugin from this checkout
-claude --plugin-dir ./claude         # run the mod from this checkout
-npm run sync                         # copy shared/ into both packages after editing it
-npm test                             # shared tests + the mod's tests
+claude --plugin-dir ./claude      # run the mod from this checkout
+herdr plugin link ./herdr         # run the herdr plugin from this checkout
+npm run sync                      # after editing shared/, copy it into both packages
+npm test
 ```
 
-`shared/` holds the monster generator, the palettes and the usage reader. Each
-package carries its own copy (`herdr/src/lib`, `claude/hooks/lib`,
-`claude/scripts`) because herdr and Claude Code each install only their own
-folder; `npm run check` fails when a copy is stale.
+`shared/` holds the monsters, scenes, palettes and usage reader; each package
+carries its own copy because Claude Code and herdr install only their own folder.
+Screenshots are real captures (`herdr pane read --ansi`) rendered with
+`scripts/ansi-to-svg.mjs`; `scripts/gallery.mjs` draws the scene grids.
 
 ## License
 

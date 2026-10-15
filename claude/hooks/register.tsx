@@ -191,7 +191,7 @@ async function refreshGithub($: EngineInterface) {
       } catch {}
     }
     const runs = await run($, ['gh', 'run', 'list', '-R', repo, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\(.status) \(.conclusion)"'])
-    if (runs) {
+    if (runs && !runs.startsWith('null')) {
       const [state, conclusion] = runs.split(' ')
       remote.ci = state !== 'completed' ? 'pending' : conclusion === 'success' ? 'success' : 'failure'
     }
@@ -259,9 +259,10 @@ function columnRows(values: number[], height: number): string[][] {
   return rows
 }
 
+// the same meter as the spinner's and the band's
 function meter(fraction: number, width: number): [string, string] {
   const filled = Math.round(Math.max(0, Math.min(1, fraction)) * width)
-  return ['█'.repeat(filled), '░'.repeat(width - filled)]
+  return ['▰'.repeat(filled), '▱'.repeat(width - filled)]
 }
 
 // ---- palette switching ----
@@ -282,6 +283,22 @@ async function applyPalette($: EngineInterface, choice: string): Promise<TamaPal
   return next
 }
 
+// Loads what the drawings read. Runs at the session's start and again after
+// a /clear, which leaves the session's values behind without a new start.
+async function loadSession($: EngineInterface) {
+  const [pal, pet] = [await loadPalette($), await loadMonster($)]
+  await update($, palette, () => pal)
+  await update($, monster, () => pet)
+  const now = Date.now()
+  await update($, idleSince, () => now)
+  const saved = await readJson<{ windows?: TamaLimit[] }>($, await statePath($, 'limits.json'), {})
+  if (saved.windows?.length) await update($, limits, () => saved.windows ?? [])
+  const pref = await $.store.get('showPet')
+  await update($, showPet, () => pref !== false)
+  void refreshUsage($)
+  void refreshGithub($)
+}
+
 export const register: Register = on => {
   let mainTurn: string | null = null
   let lastPush = 0
@@ -289,23 +306,24 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    const [pal, pet] = [await loadPalette($), await loadMonster($)]
-    await update($, palette, () => pal)
-    await update($, monster, () => pet)
-    const now = Date.now()
-    await update($, idleSince, () => now)
-    const saved = await readJson<{ windows?: TamaLimit[] }>($, await statePath($, 'limits.json'), {})
-    if (saved.windows?.length) await update($, limits, () => saved.windows ?? [])
-    const pref = await $.store.get('showPet')
-    await update($, showPet, () => pref !== false)
+    await loadSession($)
     await $.command.register({
       name: 'tamaclaude',
       description: 'Token usage charts, palettes and your monster',
       argumentHint: '[stats | palette [name] | theme on|off | pet on|off | icon [name] | reroll]',
     })
-    void refreshUsage($)
-    void refreshGithub($)
     return started
+  })
+
+  on('session.end', async ($, e, next) => {
+    const ended = await next(e)
+    // a /clear drops the session's values after its hooks ran: load them
+    // again once it has
+    if (e.reason === 'clear') {
+      $.clock.after(400, () => void loadSession($))
+      $.clock.after(2000, () => void loadSession($))
+    }
+    return ended
   })
 
   // ---- the turn the spinner draws ----
@@ -320,6 +338,10 @@ export const register: Register = on => {
     // icons so no two agents share one): read it again each turn
     const pet = await loadMonster($)
     await update($, monster, () => pet)
+    if (!(await read($, palette))) {
+      const pal = await loadPalette($)
+      await update($, palette, () => pal)
+    }
     const pane = await herdrPane($)
     if (pane && (await readConfig($)).sidebar === true) {
       sidebarTimer?.cancel()
@@ -501,7 +523,7 @@ export const register: Register = on => {
         )
       }
       const color = l.percentUsed >= 90 ? p.red : l.percentUsed >= 70 ? p.orange : p.green
-      const [full, empty] = meter(l.percentUsed / 100, Math.min(30, width - 30))
+      const [full, empty] = meter(l.percentUsed / 100, 16)
       const reset = resetIn(l.resetsAt)
       return (
         <Text>

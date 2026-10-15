@@ -35,13 +35,10 @@ export function fmt(n) {
 const visibleLength = (s) => s.replace(/\x1b\[[0-9;]*m/g, "").length;
 const padRight = (s, w) => s + " ".repeat(Math.max(0, w - visibleLength(s)));
 
+// the same meter as the Claude Code spinner and band: ▰ filled, ▱ empty
 function bar(fraction, width, fill, empty) {
-  const f = Math.max(0, Math.min(1, fraction));
-  const full = Math.floor(f * width);
-  const parts = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"];
-  const rest = Math.floor((f * width - full) * 8);
-  const filled = "█".repeat(full) + (full < width ? parts[rest] : "");
-  return paint(fill, filled) + paint(empty, "░".repeat(Math.max(0, width - visibleLength(filled))));
+  const filled = Math.round(Math.max(0, Math.min(1, fraction)) * width);
+  return paint(fill, "▰".repeat(filled)) + paint(empty, "▱".repeat(width - filled));
 }
 
 // Vertical bars, one column group per value, `height` rows of eighth-blocks.
@@ -118,7 +115,7 @@ function draw() {
     const five = limits.find((l) => l.kind === "five_hour");
     const seven = limits.find((l) => l.kind === "seven_day");
     const spr = sprite();
-    const barWidth = Math.max(10, Math.min(30, w - 50));
+    const barWidth = 16;
     const side = [
       `${paint(palette.fg, t("today").padEnd(10))}${paint(palette.yellow, fmt(data.today.tokens), BOLD)} ${paint(palette.muted, `tokens · ${fmt(data.today.output)} out`)}`,
       `${paint(palette.fg, t("session").padEnd(10))}${paint(palette.cyan, fmt(data.session?.tokens ?? 0), BOLD)} ${paint(palette.muted, "tokens")}`,
