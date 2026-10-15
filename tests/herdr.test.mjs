@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-const root = mkdtempSync(join(tmpdir(), "tamaclaude-herdr-"));
+const root = mkdtempSync(join(tmpdir(), "tamagoxtix-herdr-"));
 process.env.XDG_CONFIG_HOME = join(root, "config");
 process.env.XDG_STATE_HOME = join(root, "state");
 delete process.env.HERDR_SOCKET_PATH;
@@ -36,8 +36,8 @@ test("config falls back to defaults and survives a broken file", async () => {
   const { readConfig, writeConfig } = await import("../herdr/src/common.mjs");
   assert.equal(readConfig().palette, "beach");
   assert.equal(readConfig().sidebar, false);
-  mkdirSync(join(root, "config", "tamaclaude"), { recursive: true });
-  writeFileSync(join(root, "config", "tamaclaude", "config.json"), "{ not json");
+  mkdirSync(join(root, "config", "tamagoxtix"), { recursive: true });
+  writeFileSync(join(root, "config", "tamagoxtix", "config.json"), "{ not json");
   assert.equal(readConfig().palette, "beach");
   writeConfig({ palette: "nord" });
   assert.equal(readConfig().palette, "nord");
@@ -76,8 +76,8 @@ test("the herdr look goes in and comes out without changing the person's config"
   for (const id of Object.keys(PALETTES)) {
     const themed = apply(original, resolvePalette(id), { colors: "palette" });
     assert.equal(strip(themed).replace(/\n*$/, "\n"), original, id);
-    assert.match(themed, /# tamaclaude-disabled: panel_bg = "black"/);
-    assert.match(themed, /# tamaclaude-disabled: {3}\{ type = "hostname" \},/);
+    assert.match(themed, /# tamagoxtix-disabled: panel_bg = "black"/);
+    assert.match(themed, /# tamagoxtix-disabled: {3}\{ type = "hostname" \},/);
     assert.equal(apply(themed, resolvePalette(id), { colors: "palette" }), themed, `${id}: applying twice changes nothing`);
     if (hasHerdr) {
       mkdirSync(join(root, "config", "herdr"), { recursive: true });
@@ -124,13 +124,34 @@ test("switching palettes writes the chat theme file only where the chat uses it"
   const { existsSync, rmSync } = await import("node:fs");
   process.env.CLAUDE_CONFIG_DIR = join(root, "claude-theme");
   mkdirSync(join(root, "claude-theme"), { recursive: true });
-  const themeFile = join(root, "claude-theme", "themes", "tamaclaude.json");
+  const themeFile = join(root, "claude-theme", "themes", "tamagoxtix.json");
   const { applyPalette } = await import("../herdr/src/palette.mjs");
   writeFileSync(join(root, "claude-theme", "settings.json"), JSON.stringify({ theme: "dark" }));
   applyPalette("nord");
   assert.equal(existsSync(themeFile), false, "not written while the chat uses another theme");
-  writeFileSync(join(root, "claude-theme", "settings.json"), JSON.stringify({ theme: "custom:tamaclaude" }));
+  writeFileSync(join(root, "claude-theme", "settings.json"), JSON.stringify({ theme: "custom:tamagoxtix" }));
   applyPalette("nord");
   assert.equal(existsSync(themeFile), true, "written once the chat uses it");
   rmSync(themeFile);
+});
+
+test("an installed tamaclaude's config and state carry over to tamagoxtix once", async () => {
+  const { existsSync, readFileSync: read } = await import("node:fs");
+  const base = mkdtempSync(join(tmpdir(), "tamagoxtix-legacy-"));
+  process.env.XDG_CONFIG_HOME = join(base, "config");
+  process.env.XDG_STATE_HOME = join(base, "state");
+  mkdirSync(join(base, "config", "tamaclaude"), { recursive: true });
+  mkdirSync(join(base, "state", "tamaclaude"), { recursive: true });
+  writeFileSync(join(base, "config", "tamaclaude", "config.json"), '{"palette":"nord"}');
+  writeFileSync(join(base, "state", "tamaclaude", "rerolls.json"), '{"x":2}');
+  const { migrateLegacy } = await import("../shared/usage-node.mjs");
+  migrateLegacy();
+  assert.equal(read(join(base, "config", "tamagoxtix", "config.json"), "utf8"), '{"palette":"nord"}');
+  assert.equal(read(join(base, "state", "tamagoxtix", "rerolls.json"), "utf8"), '{"x":2}');
+  writeFileSync(join(base, "config", "tamagoxtix", "config.json"), '{"palette":"beach"}');
+  migrateLegacy();
+  assert.equal(read(join(base, "config", "tamagoxtix", "config.json"), "utf8"), '{"palette":"beach"}', "never overwrites");
+  assert.ok(existsSync(join(base, "config", "tamaclaude")), "the old folder stays");
+  process.env.XDG_CONFIG_HOME = join(root, "config");
+  process.env.XDG_STATE_HOME = join(root, "state");
 });

@@ -1,5 +1,5 @@
 // GENERATED from shared/palettes.mjs by scripts/sync-shared.mjs. Edit the original.
-// Tamaclaude palettes: the color slots every drawing uses, a set of built-in
+// TamaGoxtix palettes: the color slots every drawing uses, a set of built-in
 // palettes after Omarchy's themes, and a reader for Omarchy's colors.toml so
 // "omarchy" follows whatever theme is active.
 //
@@ -9,7 +9,7 @@
 export const SLOTS = ["bg", "fg", "muted", "accent", "red", "orange", "yellow", "green", "cyan", "blue", "magenta"];
 
 export const PALETTES = {
-  // tamaclaude's own: Omarchy's Beach theme, ocean dusk with terracotta,
+  // tamagoxtix's own: Omarchy's Beach theme, ocean dusk with terracotta,
   // palm green, seafoam and bougainvillea
   beach: {
     label: "Beach",
@@ -165,7 +165,7 @@ export function mix(a, b, t) {
 // palette, so the chat text itself follows it. The mapping is Omarchy's own
 // (default/themed/claude.json.tpl), so every palette reads like an Omarchy
 // theme does in Claude Code.
-export function claudeTheme(palette, name = "Tamaclaude") {
+export function claudeTheme(palette, name = "TamaGoxtix") {
   const p = palette;
   const brightYellow = mix(p.yellow, p.fg, 0.3);
   const brightCyan = mix(p.cyan, p.fg, 0.3);

@@ -1,9 +1,9 @@
 // Claude Code status line in the oh-my-posh style: model, folder, git branch,
 // context, the 5-hour and weekly limits and the session's time, as powerline
-// segments in the tamaclaude palette.
+// segments in the tamagoxtix palette.
 //
 // Claude Code runs it with the session's data as JSON on stdin
-// (statusLine.command); /tamaclaude statusline on sets that up.
+// (statusLine.command); /tamagoxtix statusline on sets that up.
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -25,7 +25,7 @@ function palette() {
   const configHome = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
   let choice = "beach";
   try {
-    choice = JSON.parse(readFileSync(join(configHome, "tamaclaude", "config.json"), "utf8")).palette ?? choice;
+    choice = JSON.parse(readFileSync(join(configHome, "tamagoxtix", "config.json"), "utf8")).palette ?? choice;
   } catch {}
   let omarchy;
   try {

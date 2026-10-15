@@ -190,7 +190,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
               <Text mono color={palette.muted}> tokens today · </Text>
             </Text>
           )}
-          <Text mono color={palette.muted}>/tamaclaude for stats</Text>
+          <Text mono color={palette.muted}>/tamagoxtix for stats</Text>
         </Text>
       </Box>
       {showUsage && separator()}

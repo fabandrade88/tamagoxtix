@@ -12,16 +12,16 @@ import {
 } from './lib/palettes.mjs'
 import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette, TamaUsage } from '../types'
 
-const HERDR_SOURCE = 'tamaclaude'
+const HERDR_SOURCE = 'tamagoxtix'
 
-const palette = atom({ plugin: 'tamaclaude', key: 'palette' } as const, null)
-const monster = atom({ plugin: 'tamaclaude', key: 'monster' } as const, null)
-const turn = atom({ plugin: 'tamaclaude', key: 'turn' } as const, null)
-const usage = atom({ plugin: 'tamaclaude', key: 'usage' } as const, null)
-const limits = atom({ plugin: 'tamaclaude', key: 'limits' } as const, [])
-const idleSince = atom({ plugin: 'tamaclaude', key: 'idleSince' } as const, 0)
-const showPet = atom({ plugin: 'tamaclaude', key: 'showPet' } as const, true)
-const github = atom({ plugin: 'tamaclaude', key: 'github' } as const, null)
+const palette = atom({ plugin: 'tamagoxtix', key: 'palette' } as const, null)
+const monster = atom({ plugin: 'tamagoxtix', key: 'monster' } as const, null)
+const turn = atom({ plugin: 'tamagoxtix', key: 'turn' } as const, null)
+const usage = atom({ plugin: 'tamagoxtix', key: 'usage' } as const, null)
+const limits = atom({ plugin: 'tamagoxtix', key: 'limits' } as const, [])
+const idleSince = atom({ plugin: 'tamagoxtix', key: 'idleSince' } as const, 0)
+const showPet = atom({ plugin: 'tamagoxtix', key: 'showPet' } as const, true)
+const github = atom({ plugin: 'tamagoxtix', key: 'github' } as const, null)
 
 type Config = { palette?: string; sidebar?: boolean; [key: string]: unknown }
 
@@ -33,12 +33,12 @@ async function home($: EngineInterface): Promise<string> {
 
 async function configPath($: EngineInterface): Promise<string> {
   const base = (await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`
-  return `${base}/tamaclaude/config.json`
+  return `${base}/tamagoxtix/config.json`
 }
 
 async function statePath($: EngineInterface, file: string): Promise<string> {
   const base = (await $.env.get('XDG_STATE_HOME')) ?? `${await home($)}/.local/state`
-  return `${base}/tamaclaude/${file}`
+  return `${base}/tamagoxtix/${file}`
 }
 
 async function claudeDir($: EngineInterface): Promise<string> {
@@ -318,13 +318,13 @@ async function applyPalette($: EngineInterface, choice: string): Promise<TamaPal
   const next = await loadPalette($, choice)
   await update($, palette, () => next)
   // the chat theme file is rewritten only where the chat uses it
-  if ((await readClaudeSettings($)).theme === 'custom:tamaclaude') {
-    await $.fs.write(`${await claudeDir($)}/themes/tamaclaude.json`, JSON.stringify(claudeTheme(next), null, 2) + '\n')
+  if ((await readClaudeSettings($)).theme === 'custom:tamagoxtix') {
+    await $.fs.write(`${await claudeDir($)}/themes/tamagoxtix.json`, JSON.stringify(claudeTheme(next), null, 2) + '\n')
   }
   if (await herdrPane($)) {
     try {
-      await herdr($, ['plugin', 'action', 'invoke', 'tamaclaude.sidebar-refresh'])
-      await herdr($, ['plugin', 'action', 'invoke', 'tamaclaude.theme-refresh'])
+      await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.sidebar-refresh'])
+      await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.theme-refresh'])
     } catch {}
   }
   return next
@@ -332,7 +332,39 @@ async function applyPalette($: EngineInterface, choice: string): Promise<TamaPal
 
 // Loads what the drawings read. Runs at the session's start and again after
 // a /clear, which leaves the session's values behind without a new start.
+// TamaGoxtix was called tamaclaude before 2.0: carry its choices over once,
+// and point Claude Code's settings at the renamed status line and theme.
+const LEGACY_FILES = ['config/config.json', 'state/rerolls.json', 'state/icons.json', 'state/limits.json']
+
+async function migrateLegacy($: EngineInterface) {
+  const configBase = (await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`
+  const stateBase = (await $.env.get('XDG_STATE_HOME')) ?? `${await home($)}/.local/state`
+  for (const file of LEGACY_FILES) {
+    const [kind, name] = file.split('/') as [string, string]
+    const base = kind === 'config' ? configBase : stateBase
+    const from = `${base}/tamaclaude/${name}`
+    const to = `${base}/tamagoxtix/${name}`
+    try {
+      if ((await $.fs.exists(from)) && !(await $.fs.exists(to))) await $.fs.write(to, await $.fs.read(from))
+    } catch {}
+  }
+  const settings = await readClaudeSettings($)
+  const oldLine = JSON.stringify(settings.statusLine ?? '').includes('/tamaclaude/statusline/')
+  const oldTheme = settings.theme === 'custom:tamaclaude'
+  if (!oldLine && !oldTheme) return
+  const script = oldLine ? await installStatuslineFiles($) : null
+  const pal = await loadPalette($)
+  if (oldTheme) await $.fs.write(`${await claudeDir($)}/themes/tamagoxtix.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
+  await editClaudeSettings($, s => {
+    if (script) s.statusLine = { type: 'command', command: `node "${script}"`, padding: 0, refreshInterval: 30 }
+    if (oldTheme) s.theme = 'custom:tamagoxtix'
+  })
+}
+
 async function loadSession($: EngineInterface) {
+  try {
+    await migrateLegacy($)
+  } catch {}
   const [pal, pet] = [await loadPalette($), await loadMonster($)]
   await update($, palette, () => pal)
   await update($, monster, () => pet)
@@ -365,7 +397,7 @@ type ClaudeSettings = { statusLine?: unknown; theme?: unknown; [key: string]: un
 // Changes Claude Code's own settings.json, carefully, since it holds
 // everything else the person configured:
 // - a file that is not valid JSON is left alone (never replaced by ours);
-// - the first change keeps a copy beside it (settings.json.tamaclaude-backup);
+// - the first change keeps a copy beside it (settings.json.tamagoxtix-backup);
 // - only the keys `change` touches differ, and the result is read back: when
 //   it does not parse, the file the person had is put back.
 // Returns null on success, else why nothing was changed.
@@ -381,10 +413,10 @@ async function editClaudeSettings($: EngineInterface, change: (s: ClaudeSettings
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object')
         settings = parsed as ClaudeSettings
       } catch {
-        return `${path} is not valid JSON, so tamaclaude left it alone. Fix it (or remove the broken part) and run the command again.`
+        return `${path} is not valid JSON, so tamagoxtix left it alone. Fix it (or remove the broken part) and run the command again.`
       }
     }
-    const backup = `${path}.tamaclaude-backup`
+    const backup = `${path}.tamagoxtix-backup`
     if (original && !(await $.fs.exists(backup))) await $.fs.write(backup, original)
   }
   change(settings)
@@ -410,13 +442,13 @@ async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
     const script = await installStatuslineFiles($)
     const ours = { type: 'command', command: `node "${script}"`, padding: 0, refreshInterval: 30 }
     const current = JSON.stringify(before.statusLine ?? null)
-    const keepPrevious = config.statusline !== true && !current.includes('tamaclaude')
+    const keepPrevious = config.statusline !== true && !current.includes('tamagoxtix')
     const refused = await editClaudeSettings($, s => {
       s.statusLine = ours
     })
     if (refused) return refused
     await writeConfig($, { statusline: true, ...(keepPrevious ? { previousStatusLine: before.statusLine ?? null } : {}) })
-    return 'Powerline status line on: model, folder, branch, context, limits and time. /tamaclaude statusline off restores yours.'
+    return 'Powerline status line on: model, folder, branch, context, limits and time. /tamagoxtix statusline off restores yours.'
   }
   const refused = await editClaudeSettings($, s => {
     if (config.previousStatusLine) s.statusLine = config.previousStatusLine
@@ -436,13 +468,13 @@ async function setChatTheme($: EngineInterface, on: boolean): Promise<string> {
   if (on) {
     const before = await readClaudeSettings($)
     const current = typeof before.theme === 'string' ? before.theme : undefined
-    await $.fs.write(`${await claudeDir($)}/themes/tamaclaude.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
+    await $.fs.write(`${await claudeDir($)}/themes/tamagoxtix.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
     const refused = await editClaudeSettings($, s => {
-      s.theme = 'custom:tamaclaude'
+      s.theme = 'custom:tamagoxtix'
     })
     if (refused) return refused
-    await writeConfig($, { chatTheme: true, ...(current && current !== 'custom:tamaclaude' ? { previousTheme: current } : {}) })
-    return `Chat colors follow the ${pal.label} palette. /tamaclaude theme off goes back.`
+    await writeConfig($, { chatTheme: true, ...(current && current !== 'custom:tamagoxtix' ? { previousTheme: current } : {}) })
+    return `Chat colors follow the ${pal.label} palette. /tamagoxtix theme off goes back.`
   }
   const previous = (await readConfig($)).previousTheme
   const refused = await editClaudeSettings($, s => {
@@ -454,7 +486,7 @@ async function setChatTheme($: EngineInterface, on: boolean): Promise<string> {
   return 'Chat colors back to your previous theme.'
 }
 
-// ---- /tamaclaude help ----
+// ---- /tamagoxtix help ----
 
 type HelpRow = { command: string; does: string; state?: boolean }
 type HelpSection = { title: string; rows: HelpRow[] }
@@ -463,54 +495,54 @@ async function helpSections($: EngineInterface): Promise<HelpSection[]> {
   const config = await readConfig($)
   const settings = await readClaudeSettings($)
   const pal = (await read($, palette)) ?? (await loadPalette($))
-  const chatTheme = settings.theme === 'custom:tamaclaude'
-  const statusline = JSON.stringify(settings.statusLine ?? '').includes('tamaclaude')
+  const chatTheme = settings.theme === 'custom:tamagoxtix'
+  const statusline = JSON.stringify(settings.statusLine ?? '').includes('tamagoxtix')
   const pet = await read($, showPet)
   return [
     {
       title: `colors · palette: ${pal.label}`,
       rows: [
-        { command: '/tamaclaude palette', does: 'list the palettes' },
-        { command: '/tamaclaude palette <name>', does: `switch: ${paletteChoices().join(' ')}` },
-        { command: '/tamaclaude palette omarchy', does: 'follow your Omarchy theme' },
-        { command: '/tamaclaude theme on|off', does: 'chat colors from the palette', state: chatTheme },
-        { command: '/tamaclaude statusline on|off', does: 'powerline status line', state: statusline },
+        { command: '/tamagoxtix palette', does: 'list the palettes' },
+        { command: '/tamagoxtix palette <name>', does: `switch: ${paletteChoices().join(' ')}` },
+        { command: '/tamagoxtix palette omarchy', does: 'follow your Omarchy theme' },
+        { command: '/tamagoxtix theme on|off', does: 'chat colors from the palette', state: chatTheme },
+        { command: '/tamagoxtix statusline on|off', does: 'powerline status line', state: statusline },
       ],
     },
     {
       title: 'your monster',
       rows: [
-        { command: '/tamaclaude pet on|off', does: 'the monster above the prompt', state: pet },
-        { command: '/tamaclaude reroll', does: 'a new monster' },
+        { command: '/tamagoxtix pet on|off', does: 'the monster above the prompt', state: pet },
+        { command: '/tamagoxtix reroll', does: 'a new monster' },
       ],
     },
     {
       title: 'usage',
-      rows: [{ command: '/tamaclaude', does: 'the usage card: today, session, week, limits, charts' }],
+      rows: [{ command: '/tamagoxtix', does: 'the usage card: today, session, week, limits, charts' }],
     },
     {
       title: 'herdr  (herdr plugin action invoke …)',
       rows: [
-        { command: 'tamaclaude.stats', does: 'usage popup · p switches palette' },
-        { command: 'tamaclaude.palette-next', does: 'next palette' },
-        { command: 'tamaclaude.theme-install|uninstall', does: 'the tamaclaude look for herdr', state: config.herdrTheme === true },
-        { command: 'tamaclaude.theme-follow-herdr', does: "its colors from herdr's theme", state: config.herdrColors !== 'palette' },
-        { command: 'tamaclaude.theme-follow-palette', does: 'its colors from the palette', state: config.herdrColors === 'palette' },
+        { command: 'tamagoxtix.stats', does: 'usage popup · p switches palette' },
+        { command: 'tamagoxtix.palette-next', does: 'next palette' },
+        { command: 'tamagoxtix.theme-install|uninstall', does: 'the tamagoxtix look for herdr', state: config.herdrTheme === true },
+        { command: 'tamagoxtix.theme-follow-herdr', does: "its colors from herdr's theme", state: config.herdrColors !== 'palette' },
+        { command: 'tamagoxtix.theme-follow-palette', does: 'its colors from the palette', state: config.herdrColors === 'palette' },
       ],
     },
     {
       title: 'before uninstalling',
       rows: [
-        { command: '/tamaclaude statusline off', does: 'give the status line back' },
-        { command: '/tamaclaude theme off', does: 'give the chat theme back' },
-        { command: 'tamaclaude.theme-uninstall', does: "give herdr's look back (in herdr)" },
+        { command: '/tamagoxtix statusline off', does: 'give the status line back' },
+        { command: '/tamagoxtix theme off', does: 'give the chat theme back' },
+        { command: 'tamagoxtix.theme-uninstall', does: "give herdr's look back (in herdr)" },
       ],
     },
   ]
 }
 
 async function helpText($: EngineInterface): Promise<string> {
-  const lines = ['tamaclaude commands:']
+  const lines = ['tamagoxtix commands:']
   for (const section of await helpSections($)) {
     lines.push('', section.title)
     for (const row of section.rows) {
@@ -535,7 +567,7 @@ export const register: Register = on => {
       } catch {}
     }
     await $.command.register({
-      name: 'tamaclaude',
+      name: 'tamagoxtix',
       description: 'Token usage charts, palettes and your monster',
       argumentHint: '[help | palette [name] | theme on|off | statusline on|off | pet on|off | reroll]',
     })
@@ -654,7 +686,7 @@ export const register: Register = on => {
     const { Client } = $.ui.resolve(e)
     return (
       <Client
-        key="tamaclaude-spinner"
+        key="tamagoxtix-spinner"
         module="./spinner.tsx"
         props={{
           monster: pet,
@@ -685,7 +717,7 @@ export const register: Register = on => {
     const { Client } = $.ui.resolve(e)
     return (
       <Client
-        key="tamaclaude-idle"
+        key="tamagoxtix-idle"
         module="./idle.tsx"
         props={{
           monster: pet,
@@ -702,9 +734,9 @@ export const register: Register = on => {
     )
   })
 
-  // ---- /tamaclaude help: the commands as a card, with what is on ----
+  // ---- /tamagoxtix help: the commands as a card, with what is on ----
 
-  on('ui.render', { component: 'CommandOutput', props: { command: 'tamaclaude' } }, async ($, e, next) => {
+  on('ui.render', { component: 'CommandOutput', props: { command: 'tamagoxtix' } }, async ($, e, next) => {
     const sub = e.props.args.trim().split(/\s+/)[0] ?? ''
     if (sub !== 'help' || (e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.isErrored) return next(e)
     const { Box, Text } = $.ui.resolve(e)
@@ -715,7 +747,7 @@ export const register: Register = on => {
       <Box flexDirection="column" borderStyle="round" borderColor={p.muted} paddingX={2} width={width}>
         <Text mono>
           <Text mono color={p.orange} bold>
-            tamaclaude
+            tamagoxtix
           </Text>
           <Text mono color={p.muted}>  ·  help</Text>
         </Text>
@@ -742,9 +774,9 @@ export const register: Register = on => {
     )
   })
 
-  // ---- /tamaclaude: a usage card drawn in the transcript ----
+  // ---- /tamagoxtix: a usage card drawn in the transcript ----
 
-  on('ui.render', { component: 'CommandOutput', props: { command: 'tamaclaude' } }, async ($, e, next) => {
+  on('ui.render', { component: 'CommandOutput', props: { command: 'tamagoxtix' } }, async ($, e, next) => {
     const sub = e.props.args.trim().split(/\s+/)[0] || 'stats'
     if (sub !== 'stats' || (e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.isErrored) return next(e)
     const { Box, Text } = $.ui.resolve(e)
@@ -832,7 +864,7 @@ export const register: Register = on => {
           <Box flexDirection="column">
             <Text mono>
               <Text mono color={p.accent} bold>
-                {pet?.name ?? 'tamaclaude'}
+                {pet?.name ?? 'tamagoxtix'}
               </Text>
               <Text mono color={p.muted}>{`  ·  token usage  ·  ${p.label}`}</Text>
             </Text>
@@ -869,14 +901,14 @@ export const register: Register = on => {
         {hourChart}
         <Text mono color={p.muted}>{hourLabels}</Text>
         <Text mono> </Text>
-        <Text mono color={p.muted}>/tamaclaude help for all the commands</Text>
+        <Text mono color={p.muted}>/tamagoxtix help for all the commands</Text>
       </Box>
     )
   })
 
-  // ---- /tamaclaude ----
+  // ---- /tamagoxtix ----
 
-  on('command.run', { command: 'tamaclaude' }, async ($, e) => {
+  on('command.run', { command: 'tamagoxtix' }, async ($, e) => {
     const [sub = 'stats', arg] = e.args.trim().split(/\s+/).filter(Boolean)
 
     if (sub === 'stats') {
@@ -899,7 +931,7 @@ export const register: Register = on => {
         const list = choices
           .map(id => `${id === current ? '●' : '○'} ${id}${id === 'omarchy' ? ' (follows the Omarchy theme)' : ''}`)
           .join('\n')
-        return { text: `Palettes:\n${list}\n\n/tamaclaude palette <name> to switch.` }
+        return { text: `Palettes:\n${list}\n\n/tamagoxtix palette <name> to switch.` }
       }
       if (!choices.includes(arg)) {
         return { text: `Unknown palette "${arg}". Try one of: ${choices.join(', ')}` }
@@ -909,7 +941,7 @@ export const register: Register = on => {
     }
 
     if (sub === 'theme') {
-      if (arg !== 'on' && arg !== 'off') return { text: 'Usage: /tamaclaude theme on|off' }
+      if (arg !== 'on' && arg !== 'off') return { text: 'Usage: /tamagoxtix theme on|off' }
       return { text: await setChatTheme($, arg === 'on') }
     }
 
@@ -923,7 +955,7 @@ export const register: Register = on => {
         if (!arg) {
           const current = (await read($, monster))?.icon
           const list = ICONS.map(i => `${i.name === current ? '●' : '○'} ${i.nerd} ${i.emoji} ${i.name}`).join('\n')
-          return { text: `Icons:\n${list}\n\n/tamaclaude icon <name> to pick one.` }
+          return { text: `Icons:\n${list}\n\n/tamagoxtix icon <name> to pick one.` }
         }
         if (!iconByName(arg)) return { text: `Unknown icon "${arg}". Try one of: ${ICONS.map(i => i.name).join(', ')}` }
         picks[key] = arg
@@ -942,7 +974,7 @@ export const register: Register = on => {
     }
 
     if (sub === 'statusline') {
-      if (arg !== 'on' && arg !== 'off') return { text: 'Usage: /tamaclaude statusline on|off' }
+      if (arg !== 'on' && arg !== 'off') return { text: 'Usage: /tamagoxtix statusline on|off' }
       return { text: await setStatusline($, arg === 'on') }
     }
 
@@ -950,15 +982,15 @@ export const register: Register = on => {
       const visible = arg !== 'off'
       await $.store.set('showPet', visible)
       await update($, showPet, () => visible)
-      return { text: visible ? 'Your monster hangs out above the prompt between turns.' : 'Idle monster hidden. /tamaclaude pet on brings it back.' }
+      return { text: visible ? 'Your monster hangs out above the prompt between turns.' : 'Idle monster hidden. /tamagoxtix pet on brings it back.' }
     }
 
     if (sub === 'icons') {
-      if (arg !== 'nerd' && arg !== 'emoji') return { text: 'Usage: /tamaclaude icons nerd|emoji' }
+      if (arg !== 'nerd' && arg !== 'emoji') return { text: 'Usage: /tamagoxtix icons nerd|emoji' }
       await writeConfig($, { icons: arg })
       if (await herdrPane($)) {
         try {
-          await herdr($, ['plugin', 'action', 'invoke', 'tamaclaude.sidebar-refresh'])
+          await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.sidebar-refresh'])
         } catch {}
       }
       return { text: `Sidebar icons: ${arg}.` }

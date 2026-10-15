@@ -11,13 +11,13 @@ import { refresh as refreshTheme } from "./theme.mjs";
 export function applyPalette(choice) {
   const palette = activePalette(writeConfig({ palette: choice }));
   // Claude Code reloads ~/.claude/themes on change; the file is rewritten
-  // only where the chat uses it (/tamaclaude theme on).
+  // only where the chat uses it (/tamagoxtix theme on).
   try {
     const settings = JSON.parse(readFileSync(join(claudeDir(), "settings.json"), "utf8"));
-    if (settings.theme !== "custom:tamaclaude") throw new Error("chat theme not in use");
+    if (settings.theme !== "custom:tamagoxtix") throw new Error("chat theme not in use");
     const dir = join(claudeDir(), "themes");
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "tamaclaude.json"), JSON.stringify(claudeTheme(palette), null, 2) + "\n");
+    writeFileSync(join(dir, "tamagoxtix.json"), JSON.stringify(claudeTheme(palette), null, 2) + "\n");
   } catch {}
   refreshSidebar();
   refreshTheme();

@@ -2,7 +2,7 @@
 //   node scripts/security-check.mjs
 // - no shell: commands run by argv only (no exec, no shell: true, no eval)
 // - network: https only, to the GitHub API or a GitLab instance's /api/v4
-// - files written: only under the known tamaclaude, Claude and herdr paths
+// - files written: only under the known tamagoxtix, Claude and herdr paths
 // - no secrets in the tree or in any commit
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -38,12 +38,13 @@ const ALLOWED_URLS = [/^`https:\/\/api\.github\.com\/repos\/\$\{path\}`$/, /^`ht
 const ALLOWED_WRITES = [
   /statePath\(\$, '(limits|rerolls|icons)\.json'\)/,
   /rollsPath|picksPath|configPath\(\$\)|path, /,
-  /claudeDir\(\$\)\}\/themes\/tamaclaude\.json/,
+  /claudeDir\(\$\)\}\/themes\/tamagoxtix\.json/,
   /join\(stateDir\(\), "(usage-cache|limits|rerolls|icons)\.json"\)|rerollPath\(\)|picksPath\(\)|configPath\(\)|tmp|dest|path, (next|text|current|base)/,
-  /join\(dir, "tamaclaude\.json"\)/,
+  /join\(dir, "tamagoxtix\.json"\)/,
   /OMARCHY_HOOK, HOOK_SCRIPT/,
   /^backup, original\)/, // settings.json's one-time backup beside it
-  /output|`\$\{path\}\.tamaclaude-backup`|`\$\{path\}\.tamaclaude-theme-backup`/,
+  /^to, await \$\.fs\.read\(from\)\)/, // carrying tamaclaude's files over to tamagoxtix
+  /output|`\$\{path\}\.tamagoxtix-backup`|`\$\{path\}\.tamagoxtix-theme-backup`/,
   /`\$\{dir\}\/\$\{file\}`|settingsPath/,
   /join\(here, (["a-z-.]+|"lib", file)\)/,
 ];

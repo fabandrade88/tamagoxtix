@@ -53,7 +53,7 @@ const walk = (dir) => {
   }
 };
 walk(join(claude, "projects"));
-const coldState = mkdtempSync(join(tmpdir(), "tamaclaude-bench-"));
+const coldState = mkdtempSync(join(tmpdir(), "tamagoxtix-bench-"));
 const usageScript = join(root, "shared", "usage-node.mjs");
 const run = (env) => {
   const t = process.hrtime.bigint();

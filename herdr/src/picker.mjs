@@ -19,7 +19,7 @@ const RESET = "\x1b[0m";
 
 function draw() {
   const lines = [];
-  lines.push(`${fg(palette.accent)}\x1b[1m tamaclaude\x1b[22m${fg(palette.muted)} · ${pane?.agent ? `icon for ${pane.agent} in ${pane.pane_id}` : "focus an agent pane first"}${RESET}`);
+  lines.push(`${fg(palette.accent)}\x1b[1m tamagoxtix\x1b[22m${fg(palette.muted)} · ${pane?.agent ? `icon for ${pane.agent} in ${pane.pane_id}` : "focus an agent pane first"}${RESET}`);
   lines.push("");
   ICONS.forEach((icon, i) => {
     const glyph = set === "emoji" ? icon.emoji : icon.nerd;

@@ -6,8 +6,8 @@ import { clean, parseRemote } from "../shared/forge.mjs";
 
 test("remotes on GitHub and GitLab, in every URL shape", () => {
   const cases = {
-    "https://github.com/fabandrade88/tamaclaude.git": ["github", "github.com", "fabandrade88/tamaclaude"],
-    "git@github.com:fabandrade88/tamaclaude.git": ["github", "github.com", "fabandrade88/tamaclaude"],
+    "https://github.com/fabandrade88/tamagoxtix.git": ["github", "github.com", "fabandrade88/tamagoxtix"],
+    "git@github.com:fabandrade88/tamagoxtix.git": ["github", "github.com", "fabandrade88/tamagoxtix"],
     "https://gitlab.com/gitlab-org/cli.git": ["gitlab", "gitlab.com", "gitlab-org/cli"],
     "git@gitlab.com:group/sub/project.git": ["gitlab", "gitlab.com", "group/sub/project"],
     "https://gitlab.company.com/team/app": ["gitlab", "gitlab.company.com", "team/app"],

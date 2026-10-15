@@ -8,7 +8,7 @@ import { stateDir } from "./lib/usage-node.mjs";
 const eventName = process.env.HERDR_PLUGIN_EVENT ?? "";
 const event = readJsonEnv("HERDR_PLUGIN_EVENT_JSON");
 
-if (process.env.TAMACLAUDE_DEBUG) {
+if (process.env.TAMAGOXTIX_DEBUG) {
   mkdirSync(stateDir(), { recursive: true });
   appendFileSync(join(stateDir(), "herdr-events.log"), JSON.stringify({ eventName, event }) + "\n");
 }

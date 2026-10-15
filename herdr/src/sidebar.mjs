@@ -8,8 +8,8 @@ import { basename, dirname, join } from "node:path";
 import { activePalette, herdr, paintAll, readConfig, TOKEN, writeConfig } from "./common.mjs";
 import { ICONS, STATE_MARKERS } from "./lib/icons.mjs";
 
-const BEGIN = "# >>> tamaclaude sidebar (managed by the tamaclaude plugin) >>>";
-const END = "# <<< tamaclaude sidebar <<<";
+const BEGIN = "# >>> tamagoxtix sidebar (managed by the tamagoxtix plugin) >>>";
+const END = "# <<< tamagoxtix sidebar <<<";
 
 export function herdrConfigPath() {
   const socket = process.env.HERDR_SOCKET_PATH;
@@ -81,7 +81,7 @@ export function install() {
       message: `${path} already defines ${clash.join(", ")}. Add the $${TOKEN} token to those rows yourself, or remove them and run install again. Snippet:\n\n${block()}`,
     };
   }
-  if (current && !found) copyFileSync(path, `${path}.tamaclaude-backup`);
+  if (current && !found) copyFileSync(path, `${path}.tamagoxtix-backup`);
   const next = `${base.replace(/\n*$/, "\n")}\n${block()}\n`;
   writeFileSync(path, next);
   const check = herdr(["config", "check"]);
@@ -120,7 +120,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const out = result.message;
   if (out) (result.ok ? console.log : console.error)(out);
   if (cmd !== "print" && out && readConfig()) {
-    herdr(["notification", "show", "Tamaclaude", "--body", out.split("\n")[0]]);
+    herdr(["notification", "show", "TamaGoxtix", "--body", out.split("\n")[0]]);
   }
   process.exit(result.ok ? 0 : 1);
 }

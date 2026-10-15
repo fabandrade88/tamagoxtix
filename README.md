@@ -1,7 +1,7 @@
-# tamaclaude
+# TamaGoxtix
 
-[![release](https://img.shields.io/github/v/release/fabandrade88/tamaclaude?color=e8813f)](https://github.com/fabandrade88/tamaclaude/releases)
-[![license](https://img.shields.io/github/license/fabandrade88/tamaclaude?color=3f96d4)](LICENSE)
+[![release](https://img.shields.io/github/v/release/fabandrade88/tamagoxtix?color=e8813f)](https://github.com/fabandrade88/tamagoxtix/releases)
+[![license](https://img.shields.io/github/license/fabandrade88/tamagoxtix?color=3f96d4)](LICENSE)
 ![Claude Code mod](https://img.shields.io/badge/Claude%20Code-mod-e84f9a)
 ![herdr plugin](https://img.shields.io/badge/herdr-plugin-7fbf6a)
 
@@ -14,7 +14,7 @@ eye on your token usage and your GitHub or GitLab repo.
 **38** monster bodies × **7** kinds of legs · **77** idle scenes · **91** work
 scenes · **12** palettes · GitHub and GitLab · zero dependencies
 
-tamaclaude comes in two pieces that work on their own or together:
+tamagoxtix comes in two pieces that work on their own or together:
 
 | | For | What you get |
 | --- | --- | --- |
@@ -69,14 +69,14 @@ Next to it, two columns (the second goes first on a narrow terminal):
   changed files, version, open issues and pull/merge requests. Uses `gh` or
   `glab` when signed in, the public API otherwise.
 
-Every session gets its own monster; `/tamaclaude reroll` draws another.
+Every session gets its own monster; `/tamagoxtix reroll` draws another.
 
 ### The usage card
 
-`/tamaclaude` prints a card in the chat: today, the current 5-hour session and
+`/tamagoxtix` prints a card in the chat: today, the current 5-hour session and
 the week, your limits, the last 14 days and today by hour.
 
-![The /tamaclaude card](docs/screenshots/stats.png)
+![The /tamagoxtix card](docs/screenshots/stats.png)
 
 Numbers come from Claude Code's own transcripts in `~/.claude/projects` (each API
 response counted once) and the limit readings Claude Code receives (Pro and Max
@@ -84,7 +84,7 @@ plans). Nothing leaves your machine.
 
 ### Powerline status line
 
-`/tamaclaude statusline on` turns Claude Code's status line into oh-my-posh style
+`/tamagoxtix statusline on` turns Claude Code's status line into oh-my-posh style
 segments: model, folder, git branch, context, the 5-hour and weekly limits and
 the session's time. The model leads in orange; limits turn orange and red as
 they fill. `off` puts yours back.
@@ -93,30 +93,30 @@ they fill. `off` puts yours back.
 
 ### Palettes and the chat theme
 
-Everything is drawn in one palette. **`beach`** is tamaclaude's own (Omarchy's
+Everything is drawn in one palette. **`beach`** is tamagoxtix's own (Omarchy's
 Beach: ocean dusk, terracotta, palm green, seafoam, bougainvillea);
 **`omarchy`** follows your active [Omarchy](https://omarchy.org) theme; and
 there are `tokyo-night`, `catppuccin`, `gruvbox`, `nord`, `everforest`,
 `kanagawa`, `rose-pine`, `osaka-jade`, `ristretto` and `matte-black`.
 
-`/tamaclaude theme on` colors the chat itself with the palette, mapped the way
+`/tamagoxtix theme on` colors the chat itself with the palette, mapped the way
 Omarchy themes Claude Code. `off` goes back to your theme.
 
 ### Commands
 
-`/tamaclaude help` shows them all, with what is on:
+`/tamagoxtix help` shows them all, with what is on:
 
-![/tamaclaude help](docs/screenshots/help.png)
+![/tamagoxtix help](docs/screenshots/help.png)
 
 | Command | |
 | --- | --- |
-| `/tamaclaude` | The usage card |
-| `/tamaclaude help` | Every command, and which ones are on |
-| `/tamaclaude palette [name]` | List the palettes, or switch |
-| `/tamaclaude theme on` / `off` | Color the chat with the palette |
-| `/tamaclaude statusline on` / `off` | The powerline status line |
-| `/tamaclaude pet on` / `off` | Show or hide the monster between turns |
-| `/tamaclaude reroll` | A new monster |
+| `/tamagoxtix` | The usage card |
+| `/tamagoxtix help` | Every command, and which ones are on |
+| `/tamagoxtix palette [name]` | List the palettes, or switch |
+| `/tamagoxtix theme on` / `off` | Color the chat with the palette |
+| `/tamagoxtix statusline on` / `off` | The powerline status line |
+| `/tamagoxtix pet on` / `off` | Show or hide the monster between turns |
+| `/tamagoxtix reroll` | A new monster |
 
 ### Where it works
 
@@ -124,7 +124,7 @@ Omarchy themes Claude Code. `off` goes back to your theme.
 | --- | --- |
 | Claude Code in a terminal (also inside herdr) | everything |
 | Claude Code desktop app (local sessions) | the monster, the idle band and the cards; no status line (the app doesn't show one) |
-| VS Code / JetBrains extensions | the `/tamaclaude` commands as text |
+| VS Code / JetBrains extensions | the `/tamagoxtix` commands as text |
 | claude.ai (web, mobile) | not supported: mods run in Claude Code only |
 
 ---
@@ -135,15 +135,15 @@ For [herdr](https://herdr.dev), the terminal workspace for running many agents.
 
 ### Usage popup
 
-`tamaclaude.stats` opens a popup with the same numbers as the usage card:
+`tamagoxtix.stats` opens a popup with the same numbers as the usage card:
 today, session, week, the limits, the last 14 days and today by hour. `p`
 switches the palette, `r` refreshes, `q` closes.
 
 ![herdr usage popup](docs/screenshots/herdr-stats.png)
 
-### The tamaclaude look for herdr
+### The tamagoxtix look for herdr
 
-`tamaclaude.theme-install` adds a status area right of the tabs — git branch,
+`tamagoxtix.theme-install` adds a status area right of the tabs — git branch,
 tokens today, the 5-hour and weekly limits, a clock — with Nerd Font icons and
 powerline separators.
 
@@ -151,12 +151,12 @@ powerline separators.
   painted, so switching the theme in herdr recolors everything, Spaces and
   Agents included.
 - **Colors from the palette** (`theme-follow-palette`): herdr's colors and the
-  Space and Agent rows in the tamaclaude palette, Spaces in its orange. With the
+  Space and Agent rows in the tamagoxtix palette, Spaces in its orange. With the
   `omarchy` palette, an Omarchy hook repaints it on every theme change.
 
 herdr has no background colors, so the arrows are separators rather than filled
 segments (the filled ones live in Claude Code's status line).
-`tamaclaude.theme-uninstall` restores your `config.toml` exactly; keys of yours
+`tamagoxtix.theme-uninstall` restores your `config.toml` exactly; keys of yours
 that would clash are commented out, never deleted.
 
 ### Actions
@@ -165,13 +165,13 @@ Run them with `herdr plugin action invoke <action>` or bind them to keys.
 
 | Action | |
 | --- | --- |
-| `tamaclaude.stats` | The usage popup |
-| `tamaclaude.theme-install` / `theme-uninstall` | The tamaclaude look |
-| `tamaclaude.theme-follow-herdr` / `theme-follow-palette` | Its colors from herdr's theme or from the palette |
-| `tamaclaude.palette-next` | Next palette |
-| `tamaclaude.palette-refresh` | Apply the palette again (the Omarchy hook runs it) |
-| `tamaclaude.sidebar-install` / `sidebar-uninstall` | Critter icons in the sidebar instead of the state dots (optional) |
-| `tamaclaude.icon` / `tamaclaude.reroll` | Pick or reroll the focused agent's icon |
+| `tamagoxtix.stats` | The usage popup |
+| `tamagoxtix.theme-install` / `theme-uninstall` | The tamagoxtix look |
+| `tamagoxtix.theme-follow-herdr` / `theme-follow-palette` | Its colors from herdr's theme or from the palette |
+| `tamagoxtix.palette-next` | Next palette |
+| `tamagoxtix.palette-refresh` | Apply the palette again (the Omarchy hook runs it) |
+| `tamagoxtix.sidebar-install` / `sidebar-uninstall` | Critter icons in the sidebar instead of the state dots (optional) |
+| `tamagoxtix.icon` / `tamagoxtix.reroll` | Pick or reroll the focused agent's icon |
 
 Bind the popup to a key in herdr's `config.toml`:
 
@@ -179,7 +179,7 @@ Bind the popup to a key in herdr's `config.toml`:
 [[keys.command]]
 key = "prefix+m"
 type = "plugin_action"
-command = "tamaclaude.stats"
+command = "tamagoxtix.stats"
 description = "token usage"
 ```
 
@@ -200,36 +200,47 @@ early-access API that can change between Claude Code releases.
 At the prompt of a Claude Code session:
 
 ```
-/plugin install tamaclaude --marketplace fabandrade88/tamaclaude
+/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix
 ```
 
-or from a shell: `claude plugin install tamaclaude --marketplace fabandrade88/tamaclaude`.
+or from a shell: `claude plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix`.
 
-Update with `claude plugin update tamaclaude`. tamaclaude only touches Claude
+Update with `claude plugin update tamagoxtix`. tamagoxtix only touches Claude
 Code's `settings.json` when you turn the status line or the chat theme on or off,
 changes only those keys, and keeps a copy of the file the first time
-(`settings.json.tamaclaude-backup`). To remove it, first turn those off:
+(`settings.json.tamagoxtix-backup`). To remove it, first turn those off:
 
 ```
-/tamaclaude statusline off
-/tamaclaude theme off
-/plugin uninstall tamaclaude
+/tamagoxtix statusline off
+/tamagoxtix theme off
+/plugin uninstall tamagoxtix
 ```
 
 ### herdr plugin
 
 ```sh
-herdr plugin install fabandrade88/tamaclaude/herdr
+herdr plugin install fabandrade88/tamagoxtix/herdr
 ```
 
-Update with `herdr plugin update tamaclaude`. To remove it:
+Update with `herdr plugin update tamagoxtix`. To remove it:
 
 ```sh
-herdr plugin action invoke tamaclaude.theme-uninstall
-herdr plugin uninstall tamaclaude
+herdr plugin action invoke tamagoxtix.theme-uninstall
+herdr plugin uninstall tamagoxtix
 ```
 
-Settings live in `~/.config/tamaclaude/config.json`, shared by both.
+Settings live in `~/.config/tamagoxtix/config.json`, shared by both.
+
+### Coming from tamaclaude?
+
+TamaGoxtix is tamaclaude's new name (2.0). Install TamaGoxtix as above, then
+remove tamaclaude; your palette, monster and toggles carry over on their own:
+
+```
+/plugin uninstall tamaclaude
+herdr plugin action invoke tamaclaude.theme-uninstall   # before removing it from herdr
+herdr plugin uninstall tamaclaude
+```
 
 ## Troubleshooting
 
@@ -240,7 +251,7 @@ Settings live in `~/.config/tamaclaude/config.json`, shared by both.
 - **No limits in the bars** — Claude Code reports them on Pro and Max plans, after
   the session's first response.
 - **herdr's colors don't change with its theme** — the look follows the palette:
-  run `herdr plugin action invoke tamaclaude.theme-follow-herdr`.
+  run `herdr plugin action invoke tamagoxtix.theme-follow-herdr`.
 
 ## Development
 
@@ -261,24 +272,32 @@ folder. Screenshots are real captures (`herdr pane read --ansi`) rendered with
 
 ## Changelog
 
+### 2.0.0
+
+- **tamaclaude is now TamaGoxtix**: the repository, the Claude Code mod
+  (`/tamagoxtix`), the herdr plugin (`tamagoxtix.*`) and the settings folders.
+  An installed tamaclaude carries over: its choices, the status line and the
+  chat theme move to the new names the first time TamaGoxtix runs. Install
+  TamaGoxtix and uninstall tamaclaude (see Install).
+
 ### 1.1.1
 
 - Safer changes to Claude Code's `settings.json` (`statusline on|off`,
   `theme on|off`): a file that isn't valid JSON is left alone instead of being
-  replaced, the first change keeps a copy (`settings.json.tamaclaude-backup`),
-  only tamaclaude's own keys change, and the result is read back and restored
+  replaced, the first change keeps a copy (`settings.json.tamagoxtix-backup`),
+  only tamagoxtix's own keys change, and the result is read back and restored
   if anything went wrong.
 - The chat theme file is written only while the chat uses it.
-- `/tamaclaude help` lists what to turn off before uninstalling.
+- `/tamagoxtix help` lists what to turn off before uninstalling.
 
 ### 1.1.0
 
-- Claude Code: `/tamaclaude help`; the powerline status line; the `beach`
-  palette as tamaclaude's own and an orange highlight in every palette; the
+- Claude Code: `/tamagoxtix help`; the powerline status line; the `beach`
+  palette as tamagoxtix's own and an orange highlight in every palette; the
   monster, the band and the cards in the desktop app too; GitLab with a pixel
   fox; a compact usage card; 77 idle and 91 work scenes (a party, instruments,
   IT memes, industrial instrumentation and automation).
-- herdr: the tamaclaude look (tab-bar status area), following herdr's theme by
+- herdr: the tamagoxtix look (tab-bar status area), following herdr's theme by
   default or the palette, with an Omarchy hook.
 - Unit, security and performance checks; text from git remotes is sanitized.
 

@@ -3,12 +3,12 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 const START = { cwd: '/tmp', surface: 'terminal', isInteractive: true } as const
 const SPINNER = { word: 'Coalescing', message: null, suffix: '…', mode: 'thinking' } as const
 
-describe('tamaclaude', () => {
+describe('tamagoxtix', () => {
   test('the spinner becomes the monster once the session has started', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
     const drawn = await $.ui.render({
       surface: 'terminal',
@@ -23,18 +23,18 @@ describe('tamaclaude', () => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
     for (const mode of ['requesting', 'thinking', 'tool-use', 'responding'] as const) {
       const ui = await $.ui.mount({
-        plugin: 'tamaclaude',
+        plugin: 'tamagoxtix',
         surface: 'terminal',
         component: 'Spinner',
         props: { ...SPINNER, mode },
       })
       for (let i = 0; i < 6; i++) await ui.advance(160)
-      expect(await ui.find({ in: 'tamaclaude-spinner', type: 'Text', text: /Coalescing/ })).toBeDefined()
-      expect(await ui.find({ in: 'tamaclaude-spinner', type: 'Text', text: /tokens · esc to interrupt/ })).toBeDefined()
+      expect(await ui.find({ in: 'tamagoxtix-spinner', type: 'Text', text: /Coalescing/ })).toBeDefined()
+      expect(await ui.find({ in: 'tamagoxtix-spinner', type: 'Text', text: /tokens · esc to interrupt/ })).toBeDefined()
       await ui.unmount()
     }
   })
@@ -43,21 +43,21 @@ describe('tamaclaude', () => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
     const ui = await $.ui.mount({
-      plugin: 'tamaclaude',
+      plugin: 'tamagoxtix',
       surface: 'terminal',
       component: 'AbovePrompt',
       props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100 } as never,
     })
     // two minutes of frames: several idle scenes go by
     for (let i = 0; i < 400; i++) await ui.advance(320)
-    expect(await ui.find({ in: 'tamaclaude-idle', type: 'Text', text: /waiting for you/ })).toBeDefined()
+    expect(await ui.find({ in: 'tamagoxtix-idle', type: 'Text', text: /waiting for you/ })).toBeDefined()
     await ui.unmount()
   })
 
-  test('/tamaclaude prints a usage card from the numbers on disk', async ($, on) => {
+  test('/tamagoxtix prints a usage card from the numbers on disk', async ($, on) => {
     const day = (date: string, tokens: number) => ({ date, tokens, output: tokens / 100 })
     const usage = {
       generatedAt: 0,
@@ -69,7 +69,7 @@ describe('tamaclaude', () => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     on('process.run', ($, e) =>
       e.argv.some(a => a.endsWith('usage-node.mjs'))
         ? { value: { exitCode: 0, stdout: JSON.stringify(usage), stderr: '' } }
@@ -77,43 +77,43 @@ describe('tamaclaude', () => {
     )
     await $.session.start(START)
     const result = await $.command.run({
-      command: 'tamaclaude',
+      command: 'tamagoxtix',
       args: '',
       origin: { kind: 'composer' },
       presentation: { isFullscreen: false, columns: 100 },
     })
     expect(result.text).toContain('today 13M')
     const ui = await $.ui.mount({
-      plugin: 'tamaclaude',
+      plugin: 'tamagoxtix',
       surface: 'terminal',
       component: 'CommandOutput',
-      props: { command: 'tamaclaude', args: '', text: result.text ?? '', isErrored: false } as never,
+      props: { command: 'tamagoxtix', args: '', text: result.text ?? '', isErrored: false } as never,
     })
     expect(await ui.find({ type: 'Text', text: /last 14 days/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /today by hour/ })).toBeDefined()
     await ui.unmount()
   })
 
-  test('/tamaclaude help lists the commands and draws them as a card', async ($, on) => {
+  test('/tamagoxtix help lists the commands and draws them as a card', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
     const result = await $.command.run({
-      command: 'tamaclaude',
+      command: 'tamagoxtix',
       args: 'help',
       origin: { kind: 'composer' },
       presentation: { isFullscreen: false, columns: 100 },
     })
-    for (const part of ['palette <name>', 'theme on|off', 'statusline on|off', 'pet on|off', 'tamaclaude.palette-next']) {
+    for (const part of ['palette <name>', 'theme on|off', 'statusline on|off', 'pet on|off', 'tamagoxtix.palette-next']) {
       expect(result.text).toContain(part)
     }
     const ui = await $.ui.mount({
-      plugin: 'tamaclaude',
+      plugin: 'tamagoxtix',
       surface: 'terminal',
       component: 'CommandOutput',
-      props: { command: 'tamaclaude', args: 'help', text: result.text ?? '', isErrored: false } as never,
+      props: { command: 'tamagoxtix', args: 'help', text: result.text ?? '', isErrored: false } as never,
     })
     expect(await ui.find({ type: 'Text', text: /statusline on\|off/ })).toBeDefined()
     await ui.unmount()
@@ -123,33 +123,33 @@ describe('tamaclaude', () => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
 
     const drawn = await $.ui.render({ surface: 'desktop', component: 'Spinner', requestId: 'main', props: SPINNER })
     expect(JSON.stringify(drawn)).toContain('spinner.tsx')
 
-    const spinner = await $.ui.mount({ plugin: 'tamaclaude', surface: 'desktop', component: 'Spinner', props: { ...SPINNER, mode: 'tool-use' } })
+    const spinner = await $.ui.mount({ plugin: 'tamagoxtix', surface: 'desktop', component: 'Spinner', props: { ...SPINNER, mode: 'tool-use' } })
     for (let i = 0; i < 6; i++) await spinner.advance(160)
-    expect(await spinner.find({ in: 'tamaclaude-spinner', type: 'Text', text: /esc to interrupt/ })).toBeDefined()
+    expect(await spinner.find({ in: 'tamagoxtix-spinner', type: 'Text', text: /esc to interrupt/ })).toBeDefined()
     await spinner.unmount()
 
     const band = await $.ui.mount({
-      plugin: 'tamaclaude',
+      plugin: 'tamagoxtix',
       surface: 'desktop',
       component: 'AbovePrompt',
       props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100 } as never,
     })
     for (let i = 0; i < 20; i++) await band.advance(320)
-    expect(await band.find({ in: 'tamaclaude-idle', type: 'Text', text: /waiting for you/ })).toBeDefined()
+    expect(await band.find({ in: 'tamagoxtix-idle', type: 'Text', text: /waiting for you/ })).toBeDefined()
     await band.unmount()
 
-    const help = await $.command.run({ command: 'tamaclaude', args: 'help', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+    const help = await $.command.run({ command: 'tamagoxtix', args: 'help', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
     const card = await $.ui.mount({
-      plugin: 'tamaclaude',
+      plugin: 'tamagoxtix',
       surface: 'desktop',
       component: 'CommandOutput',
-      props: { command: 'tamaclaude', args: 'help', text: help.text ?? '', isErrored: false } as never,
+      props: { command: 'tamagoxtix', args: 'help', text: help.text ?? '', isErrored: false } as never,
     })
     expect(await card.find({ type: 'Text', text: /statusline on\|off/ })).toBeDefined()
     await card.unmount()
@@ -176,15 +176,15 @@ describe('tamaclaude', () => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/home/me' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     memoryFs(on, files)
     await $.session.start(START)
     for (const args of ['statusline on', 'theme on', 'statusline off', 'theme off']) {
-      const result = await $.command.run({ command: 'tamaclaude', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+      const result = await $.command.run({ command: 'tamagoxtix', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
       expect(result.text).toContain('not valid JSON')
     }
     expect(files.get('/home/me/.claude/settings.json')).toBe('{ "model": "opus", }')
-    expect(files.has('/home/me/.claude/settings.json.tamaclaude-backup')).toBe(false)
+    expect(files.has('/home/me/.claude/settings.json.tamagoxtix-backup')).toBe(false)
   })
 
   test('statusline and theme change their own keys, keep the rest, and back the file up once', async ($, on) => {
@@ -193,33 +193,33 @@ describe('tamaclaude', () => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/home/me' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     memoryFs(on, files)
     await $.session.start(START)
     const run = (args: string) =>
-      $.command.run({ command: 'tamaclaude', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+      $.command.run({ command: 'tamagoxtix', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
     await run('statusline on')
     await run('theme on')
     let settings = JSON.parse(files.get('/home/me/.claude/settings.json') ?? '{}')
     expect(settings.model).toBe('opus')
     expect(settings.permissions).toEqual({ allow: ['Bash(ls)'] })
-    expect(settings.theme).toBe('custom:tamaclaude')
+    expect(settings.theme).toBe('custom:tamagoxtix')
     expect(String(settings.statusLine?.command)).toContain('statusline.mjs')
-    expect(files.get('/home/me/.claude/settings.json.tamaclaude-backup')).toBe(original)
+    expect(files.get('/home/me/.claude/settings.json.tamagoxtix-backup')).toBe(original)
     await run('statusline off')
     await run('theme off')
     settings = JSON.parse(files.get('/home/me/.claude/settings.json') ?? '{}')
     expect(settings).toEqual({ model: 'opus', permissions: { allow: ['Bash(ls)'] }, theme: 'dark' })
   })
 
-  test('/tamaclaude palette lists every palette', async ($, on) => {
+  test('/tamagoxtix palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
     const result = await $.command.run({
-      command: 'tamaclaude',
+      command: 'tamagoxtix',
       args: 'palette',
       origin: { kind: 'composer' },
       presentation: { isFullscreen: false, columns: 100 },
@@ -232,10 +232,10 @@ describe('tamaclaude', () => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
     on('session.id', () => ({ value: 'test-session' }))
-    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
     const result = await $.command.run({
-      command: 'tamaclaude',
+      command: 'tamagoxtix',
       args: 'palette nope',
       origin: { kind: 'composer' },
       presentation: { isFullscreen: false, columns: 100 },

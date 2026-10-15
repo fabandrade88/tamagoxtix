@@ -9,12 +9,12 @@ const paneId = context.focused_pane_id ?? context.pane_id ?? process.env.HERDR_P
 
 switch (action) {
   case "stats": {
-    const plugin = process.env.HERDR_PLUGIN_ID ?? "tamaclaude";
+    const plugin = process.env.HERDR_PLUGIN_ID ?? "tamagoxtix";
     const res = herdr(["plugin", "pane", "open", "--plugin", plugin, "--entrypoint", "stats"]);
     process.exit(res.status ?? 1);
   }
   case "icon": {
-    const plugin = process.env.HERDR_PLUGIN_ID ?? "tamaclaude";
+    const plugin = process.env.HERDR_PLUGIN_ID ?? "tamagoxtix";
     const res = herdr(["plugin", "pane", "open", "--plugin", plugin, "--entrypoint", "icon-picker"]);
     process.exit(res.status ?? 1);
   }
@@ -26,13 +26,13 @@ switch (action) {
     const choices = paletteChoices();
     const current = readConfig().palette ?? "omarchy";
     const palette = applyPalette(choices[(choices.indexOf(current) + 1) % choices.length]);
-    herdr(["notification", "show", "Tamaclaude", "--body", `Palette: ${palette.label}`]);
+    herdr(["notification", "show", "TamaGoxtix", "--body", `Palette: ${palette.label}`]);
     break;
   }
   case "reroll": {
     const pane = paneId ? herdrJson(["pane", "get", paneId])?.pane : null;
     if (!pane?.agent) {
-      herdr(["notification", "show", "Tamaclaude", "--body", "Focus an agent pane first."]);
+      herdr(["notification", "show", "TamaGoxtix", "--body", "Focus an agent pane first."]);
       break;
     }
     reroll(pane);

@@ -1,4 +1,4 @@
-// Shared plumbing for the herdr side: calling herdr, the user's tamaclaude
+// Shared plumbing for the herdr side: calling herdr, the user's tamagoxtix
 // config, the active palette, and which monster belongs to which pane.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -9,13 +9,13 @@ import { makeMonster } from "./lib/monsters.mjs";
 import { OMARCHY_COLORS_PATH, resolvePalette } from "./lib/palettes.mjs";
 import { configDir, stateDir } from "./lib/usage-node.mjs";
 
-export const SOURCE = "tamaclaude";
+export const SOURCE = "tamagoxtix";
 export const TOKEN = "monster";
 
 export function herdr(args) {
   const bin = process.env.HERDR_BIN_PATH ?? "herdr";
   const res = spawnSync(bin, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  if (res.status !== 0 && process.env.TAMACLAUDE_DEBUG) {
+  if (res.status !== 0 && process.env.TAMAGOXTIX_DEBUG) {
     console.error(`herdr ${args.join(" ")} -> ${res.status}: ${res.stderr}`);
   }
   return res;
@@ -79,7 +79,7 @@ function writeJson(path, value) {
 // The seed is the agent's session when herdr knows it (the same Claude
 // session keeps its monster across panes and restarts), else the pane.
 export function seedKeyFor(pane) {
-  return pane?.agent_session?.value ?? pane?.pane_id ?? "tamaclaude";
+  return pane?.agent_session?.value ?? pane?.pane_id ?? "tamagoxtix";
 }
 
 export function iconForPane(pane) {
@@ -175,7 +175,7 @@ export function listPanes() {
   return herdrJson(["pane", "list"])?.panes ?? [];
 }
 
-// Sidebar icons are opt-in (tamaclaude.sidebar-install); while off, nothing
+// Sidebar icons are opt-in (tamagoxtix.sidebar-install); while off, nothing
 // is painted and herdr's own rows stay as they are.
 export function sidebarEnabled() {
   return readConfig().sidebar === true;

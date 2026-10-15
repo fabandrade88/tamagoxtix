@@ -58,7 +58,7 @@ export type TamaLimit = { kind: string; percentUsed: number; resetsAt?: string }
 
 declare module 'claude-code' {
   interface PluginState {
-    tamaclaude: {
+    tamagoxtix: {
       palette: TamaPalette | null
       monster: TamaMonster | null
       turn: TamaTurn | null
@@ -66,7 +66,7 @@ declare module 'claude-code' {
       limits: TamaLimit[]
       /** When Claude last went quiet; the idle band counts from it. */
       idleSince: number
-      /** Whether the idle band shows (/tamaclaude pet on|off). */
+      /** Whether the idle band shows (/tamagoxtix pet on|off). */
       showPet: boolean
       github: TamaGithub | null
     }

@@ -1,21 +1,21 @@
-# tamaclaude for Claude Code
+# tamagoxtix for Claude Code
 
 A pixel monster in place of Claude Code's spinner: it acts out what Claude is
 doing, hangs out above the prompt between turns next to your usage and your
 GitHub or GitLab repo, and colors everything in one palette.
 
 ```
-/plugin install tamaclaude --marketplace fabandrade88/tamaclaude
+/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix
 ```
 
-Then `/tamaclaude help` lists every command. Needs Claude Code 2.1.300+ (the
+Then `/tamagoxtix help` lists every command. Needs Claude Code 2.1.300+ (the
 plugin uses Claude Code's function hooks, an early-access API) and Node.js 18+.
 
-Screenshots, commands and details: [the main README](https://github.com/fabandrade88/tamaclaude#readme).
+Screenshots, commands and details: [the main README](https://github.com/fabandrade88/tamagoxtix#readme).
 
 ## What it runs, reads, writes and sends
 
-Everything tamaclaude does happens on your machine, in readable source in this
+Everything tamagoxtix does happens on your machine, in readable source in this
 folder. It sends no analytics and no telemetry, and reads no credentials.
 
 **Commands it runs** (by argument list, never through a shell):
@@ -36,22 +36,22 @@ git remote is on GitHub or GitLab; no credentials are sent.
 
 **Files it reads:** Claude Code's transcripts in `~/.claude/projects` (it keeps
 only token counts and timestamps, never message text), `~/.claude/settings.json`
-(to show in `/tamaclaude help` what is on), the active Omarchy theme's colors,
+(to show in `/tamagoxtix help` what is on), the active Omarchy theme's colors,
 and the project's `package.json` version.
 
 **Files it writes:**
 
-- `~/.config/tamaclaude/config.json`: your choices (palette, toggles)
-- `~/.local/state/tamaclaude/`: a usage cache (message ids, timestamps, token
+- `~/.config/tamagoxtix/config.json`: your choices (palette, toggles)
+- `~/.local/state/tamagoxtix/`: a usage cache (message ids, timestamps, token
   counts), the last limit readings, and a copy of the status line script
 - only when you ask for them:
-  - `/tamaclaude statusline on|off` changes `statusLine`, and
-    `/tamaclaude theme on|off` changes `theme`, in `~/.claude/settings.json`.
+  - `/tamagoxtix statusline on|off` changes `statusLine`, and
+    `/tamagoxtix theme on|off` changes `theme`, in `~/.claude/settings.json`.
     Only those keys change; a file that isn't valid JSON is left alone; the
-    first change keeps a copy as `settings.json.tamaclaude-backup`.
-  - `/tamaclaude theme on` also writes `~/.claude/themes/tamaclaude.json`.
+    first change keeps a copy as `settings.json.tamagoxtix-backup`.
+  - `/tamagoxtix theme on` also writes `~/.claude/themes/tamagoxtix.json`.
 
-Before uninstalling, run `/tamaclaude statusline off` and `/tamaclaude theme off`
+Before uninstalling, run `/tamagoxtix statusline off` and `/tamagoxtix theme off`
 to give those settings back.
 
 ## License

@@ -4,7 +4,7 @@ import { makeMonster, slotColor } from "../shared/monsters.mjs";
 import { IDLE_SCENES, scene, WORK_POOLS } from "../shared/scenes.mjs";
 import { hexToRgb, resolvePalette } from "../shared/palettes.mjs";
 
-const [kind = "idle", paletteName = "beach", perRow = "4", seed = "tamaclaude"] = process.argv.slice(2);
+const [kind = "idle", paletteName = "beach", perRow = "4", seed = "tamagoxtix"] = process.argv.slice(2);
 const palette = resolvePalette(paletteName);
 const fg = (hex) => `\x1b[38;2;${hexToRgb(hex).join(";")}m`;
 const bg = (hex) => `\x1b[48;2;${hexToRgb(hex).join(";")}m`;

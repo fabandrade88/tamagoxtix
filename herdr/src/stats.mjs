@@ -103,7 +103,7 @@ function draw() {
   const rows = out.rows || 24;
   const w = Math.max(40, cols - 4);
   const lines = [];
-  const title = `${paint(palette.accent, "tamaclaude", BOLD)}${paint(palette.muted, ` · ${t("usage")}`)}`;
+  const title = `${paint(palette.accent, "tamagoxtix", BOLD)}${paint(palette.muted, ` · ${t("usage")}`)}`;
   const keys = paint(palette.muted, `${t("palette")}: `) + paint(palette.magenta, palette.label) + paint(palette.muted, "   [p] [r] [q]");
   lines.push(padRight(title, w - visibleLength(keys)) + keys);
   lines.push("");

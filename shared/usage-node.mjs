@@ -4,7 +4,7 @@
 //
 // Node only. Run as a script it prints the summary as JSON:
 //   node usage-node.mjs [--days 14]
-import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -18,13 +18,28 @@ export function claudeDir() {
 
 export function stateDir() {
   const base = process.env.XDG_STATE_HOME ?? join(homedir(), ".local", "state");
-  return join(base, "tamaclaude");
+  return join(base, "tamagoxtix");
 }
 
 export function configDir() {
   const base = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
-  return join(base, "tamaclaude");
+  return join(base, "tamagoxtix");
 }
+
+// TamaGoxtix was called tamaclaude before 2.0: carry its config and state
+// over once, the first time the new folders are looked for.
+export function migrateLegacy() {
+  const config = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+  const state = process.env.XDG_STATE_HOME ?? join(homedir(), ".local", "state");
+  for (const base of [config, state]) {
+    const from = join(base, "tamaclaude");
+    const to = join(base, "tamagoxtix");
+    try {
+      if (existsSync(from) && !existsSync(to)) cpSync(from, to, { recursive: true });
+    } catch {}
+  }
+}
+migrateLegacy();
 
 function* jsonlFiles(dir, since) {
   let entries;

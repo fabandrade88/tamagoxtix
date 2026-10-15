@@ -1,4 +1,4 @@
-// Tamaclaude monsters: small pixel critters in the spirit of Claude Code's
+// TamaGoxtix monsters: small pixel critters in the spirit of Claude Code's
 // mascot, generated from a seed so every agent gets its own.
 //
 // Pure module (no Node or engine APIs) shared by the herdr plugin and the

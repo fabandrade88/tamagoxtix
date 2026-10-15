@@ -81,7 +81,7 @@ test("the Claude Code theme is made of hex colors", () => {
 });
 
 test("usage sums tokens per day and skips duplicate responses", async () => {
-  const root = mkdtempSync(join(tmpdir(), "tamaclaude-"));
+  const root = mkdtempSync(join(tmpdir(), "tamagoxtix-"));
   process.env.CLAUDE_CONFIG_DIR = join(root, "claude");
   process.env.XDG_STATE_HOME = join(root, "state");
   const project = join(root, "claude", "projects", "demo");

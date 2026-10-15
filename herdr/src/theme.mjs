@@ -1,6 +1,6 @@
 // A herdr look: a status area right of the tabs with icons and powerline
 // separators, colored by herdr's own theme by default, or (follow-palette)
-// herdr's colors and sidebar rows painted in the tamaclaude palette. herdr has no background colors for these, so the
+// herdr's colors and sidebar rows painted in the tamagoxtix palette. herdr has no background colors for these, so the
 // arrows are drawn as separators rather than filled segments.
 //   node theme.mjs install | uninstall | refresh | print
 //
@@ -17,10 +17,10 @@ import { mix } from "./lib/palettes.mjs";
 import { stateDir } from "./lib/usage-node.mjs";
 import { herdrConfigPath } from "./sidebar.mjs";
 
-const BEGIN = "# >>> tamaclaude theme >>>";
-const END = "# <<< tamaclaude theme <<<";
-const DISABLED = "# tamaclaude-disabled: ";
-const SIDEBAR_MARK = "# >>> tamaclaude sidebar";
+const BEGIN = "# >>> tamagoxtix theme >>>";
+const END = "# <<< tamagoxtix theme <<<";
+const DISABLED = "# tamagoxtix-disabled: ";
+const SIDEBAR_MARK = "# >>> tamagoxtix sidebar";
 
 // ---- what goes in ----
 
@@ -123,7 +123,7 @@ function upsertTable(lines, table, keys) {
 }
 
 // `colors`: "herdr" leaves every color to herdr's own theme (switch it in
-// herdr and everything follows); "palette" paints herdr in the tamaclaude
+// herdr and everything follows); "palette" paints herdr in the tamagoxtix
 // palette, Spaces in its orange.
 export function apply(text, p, { sidebar = true, colors = "herdr" } = {}) {
   const lines = strip(text).replace(/\n*$/, "").split("\n");
@@ -142,10 +142,10 @@ export function apply(text, p, { sidebar = true, colors = "herdr" } = {}) {
 
 // ---- Omarchy: refresh the palette when its theme changes ----
 
-const OMARCHY_HOOK = join(homedir(), ".config", "omarchy", "hooks", "theme-set.d", "tamaclaude");
+const OMARCHY_HOOK = join(homedir(), ".config", "omarchy", "hooks", "theme-set.d", "tamagoxtix");
 const HOOK_SCRIPT = `#!/bin/bash
-# Installed by the tamaclaude herdr plugin: follow the new Omarchy theme.
-command -v herdr >/dev/null && herdr plugin action invoke tamaclaude.palette-refresh >/dev/null 2>&1 || true
+# Installed by the tamagoxtix herdr plugin: follow the new Omarchy theme.
+command -v herdr >/dev/null && herdr plugin action invoke tamagoxtix.palette-refresh >/dev/null 2>&1 || true
 `;
 
 function omarchyHook(on) {
@@ -184,7 +184,7 @@ function write(next, previous) {
 export function install() {
   const path = herdrConfigPath();
   const current = existsSync(path) ? readFileSync(path, "utf8") : "";
-  if (current && !current.includes(BEGIN)) copyFileSync(path, `${path}.tamaclaude-theme-backup`);
+  if (current && !current.includes(BEGIN)) copyFileSync(path, `${path}.tamagoxtix-theme-backup`);
   copyStatusBar();
   const colors = readConfig().herdrColors === "palette" ? "palette" : "herdr";
   const result = write(apply(current, activePalette(), { colors }), current);
@@ -192,14 +192,14 @@ export function install() {
   writeConfig({ herdrTheme: true });
   omarchyHook(colors === "palette" && readConfig().palette === "omarchy");
   const how = colors === "palette" ? `colors from the ${activePalette().label} palette` : "colors from herdr's theme";
-  return { ok: true, message: `tamaclaude look on, ${how}. tamaclaude.theme-uninstall restores yours.` };
+  return { ok: true, message: `tamagoxtix look on, ${how}. tamagoxtix.theme-uninstall restores yours.` };
 }
 
 export function uninstall() {
   const path = herdrConfigPath();
   if (!existsSync(path)) return { ok: true, message: "Nothing to remove." };
   const current = readFileSync(path, "utf8");
-  if (!current.includes(BEGIN) && !current.includes(DISABLED)) return { ok: true, message: "The tamaclaude look is not installed." };
+  if (!current.includes(BEGIN) && !current.includes(DISABLED)) return { ok: true, message: "The tamagoxtix look is not installed." };
   const result = write(strip(current).replace(/\n*$/, "\n"), current);
   if (!result.ok) return result;
   writeConfig({ herdrTheme: false });
@@ -234,6 +234,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
               ? { ok: true, message: apply("", activePalette(), { colors: readConfig().herdrColors }) }
               : install();
   if (result.message) (result.ok ? console.log : console.error)(result.message);
-  if (cmd !== "print" && result.message) herdr(["notification", "show", "Tamaclaude", "--body", result.message.split("\n")[0]]);
+  if (cmd !== "print" && result.message) herdr(["notification", "show", "TamaGoxtix", "--body", result.message.split("\n")[0]]);
   process.exit(result.ok ? 0 : 1);
 }
