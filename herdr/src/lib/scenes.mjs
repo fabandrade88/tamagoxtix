@@ -9,7 +9,7 @@
 // herdr plugin and the mod.
 
 import { cellsToRuns, gridToCells, hashString, spriteGrid } from "./monsters.mjs";
-import { ART_MORE, IDLE_MORE, POOLS_MORE, WORK_MORE } from "./scenes-more.mjs";
+import { ART_MORE, IDLE_MORE, POOLS_MORE, WORK_MEMES, WORK_MORE } from "./scenes-more.mjs";
 
 export const SCENE_WIDTH = 20; // pixels, one text column each
 export const SCENE_HEIGHT = 6; // pixels, two per text row
@@ -400,7 +400,7 @@ const WORK = {
   done: (t) => ({ pose: "done", fx: t % 4 < 2 ? ["✦", " ✧", "✦"] : [" ✧", "✦", " ✧"], fxSlot: "yellow", caption: "is done" }),
 };
 
-Object.assign(WORK, WORK_MORE);
+Object.assign(WORK, WORK_MORE, WORK_MEMES);
 
 const TOOLS = ["hammer", "gears", "saw", "drill", "lab", "weld", "boxes", "mining", "bugnet", "roller", ...POOLS_MORE.tool];
 
@@ -416,15 +416,15 @@ export const WORK_POOLS = {
 
 export const WORK_SCENES = Object.keys(WORK);
 
-// Which idle scene plays now: a new one every `period` ms, in an order that
+// Which idle scene plays now: a new one every 40 seconds, in an order that
 // differs per monster.
-export function idleSceneAt(monster, now, period = 20_000) {
+export function idleSceneAt(monster, now, period = 40_000) {
   const block = Math.floor(now / period);
   return IDLE_SCENES[hashString(`${monster.seed}:${block}`) % IDLE_SCENES.length];
 }
 
-// Which work scene suits a mode now: a new one every `period` ms.
-export function workSceneAt(monster, mode, now, period = 8_000) {
+// Which work scene suits a mode now: a new one every 15 seconds.
+export function workSceneAt(monster, mode, now, period = 15_000) {
   const pool = WORK_POOLS[mode] ?? WORK_POOLS.thinking;
   const block = Math.floor(now / period);
   return pool[hashString(`${monster.seed}:${mode}:${block}`) % pool.length];
@@ -462,6 +462,29 @@ export function octocat(frame, slot = "fg") {
   const grid = OCTOCAT.map((variants, y) => {
     const row = y === 2 ? variants[blink] : y === 5 ? variants[wiggle] : variants[0];
     return [...row].map((ch) => (ch === "#" ? slot : null));
+  });
+  return gridToCells(grid).map(cellsToRuns);
+}
+
+// ---- the GitLab critter: a small fox ----
+
+const FOX = [
+  ["r......r", "r......r"],
+  ["rr....rr", "rr....rr"],
+  ["roooooor", "roooooor"],
+  ["o.oooo.o", "oooooooo"], // blinks now and then
+  [".oooooo.", ".oooooo."],
+  ["..yyyy..", "...yy..."], // the chin moves as it talks
+];
+const FOX_SLOTS = { r: "red", o: "orange", y: "yellow" };
+
+// 8x6 px in the fox's own colors, as rows of runs like scene() gives.
+export function gitlabFox(frame) {
+  const blink = frame % 18 === 17 ? 1 : 0;
+  const chin = Math.floor(frame / 3) % 2;
+  const grid = FOX.map((variants, y) => {
+    const row = y === 3 ? variants[blink] : y === 5 ? variants[chin] : variants[0];
+    return [...row].map((ch) => FOX_SLOTS[ch] ?? null);
   });
   return gridToCells(grid).map(cellsToRuns);
 }

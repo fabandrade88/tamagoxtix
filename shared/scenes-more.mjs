@@ -91,6 +91,18 @@ export const ART_MORE = {
   fax: ["uuuu", "uuuu", ".ff."],
   craneFolded: ["f..f", ".ff.", "ffff"],
   craneFlat: ["ffff", "ffff", "ffff"],
+  // work: memes and IT life
+  flames: ["y..y..y", "ry.ry.r", "rorroro"],
+  calendar: ["rrrr", "ffff", "fuff", "ffff"],
+  terminal: ["uuuuuu", "ug...u", "u....u", "uuuuuu"],
+  powerOn: [".gg.", "g.gg", "g..g", ".gg."],
+  powerOff: [".uu.", "u.uu", "u..u", ".uu."],
+  clipboard: [".uu.", "ffff", "fuuf", "ffff", "fuff"],
+  helm: [".b.b.", "bbbbb", ".bfb.", "bbbbb", ".b.b."],
+  helmTurn: ["b...b", ".bbb.", "bbfbb", ".bbb.", "b...b"],
+  whale: ["o.y.g.", "cccccc", "cccccf", ".cccc."],
+  bsod: ["uuuuuu", "ubbbbu", "ubfbbu", "uuuuuu", ".uu..."],
+  sticker: ["uuuuuuu", "ugcccgu", "uuuuuuu", "uuuuuuu"],
 };
 
 export const IDLE_MORE = {
@@ -241,9 +253,41 @@ export const WORK_MORE = {
   origami: (t) => ({ pose: "read", props: [[t % 8 < 4 ? "craneFlat" : "craneFolded", 14, 2]], fx: t % 8 >= 4 ? mid("✧") : BLANK, fxSlot: "fg", caption: "is folding origami" }),
 };
 
+// Memes and IT life, mixed into every mode's pool.
+export const WORK_MEMES = {
+  thisisfine: (t) => ({ pose: "chew", props: [["flames", 11, 3], ["mug", 13, cyc(t, [0, 0, 1])]], fx: mid(cyc(t, ["this", "is", "fine."], 3)), fxSlot: "orange", caption: "says this is fine" }),
+  womm: (t) => ({ pose: t % 10 >= 8 ? "done" : "read", props: [["sticker", 12, 2]], fx: t % 10 >= 8 ? mid("WOMM ✓") : BLANK, fxSlot: "green", caption: "says it works on my machine" }),
+  friday: (t) => ({ pose: t % 8 < 4 ? "blocked" : "idle", props: [["calendar", 12, 1], ["rocket", 17, cyc(t, [2, 1, 0, 1])]], fx: mid(cyc(t, ["FRI", "5pm", "yolo"], 3)), fxSlot: "red", caption: "is deploying on a Friday" }),
+  rmrf: (t) => {
+    const oops = t % 12 >= 7;
+    return { pose: oops ? "blocked" : "responding", props: [["terminal", 12, 1]], fx: mid(oops ? "oops" : "rm -rf"), fxSlot: oops ? "red" : "green", caption: oops ? "ran rm -rf in the wrong folder" : "is cleaning up files" };
+  },
+  offon: (t) => {
+    const on = t % 8 >= 4;
+    return { pose: on ? "done" : "sleep", props: [[on ? "powerOn" : "powerOff", 14, 1]], fx: mid(on ? "on" : "off"), fxSlot: on ? "green" : "muted", caption: "turned it off and on again" };
+  },
+  forcepush: (t) => ({ pose: "tool-use", ox: 1 + cyc(t, [0, 1, 2, 1]), props: [["box", 14 + cyc(t, [0, 1, 2, 1]), 2]], fx: mid(cyc(t, ["git push", "--force", "!!"], 3)), fxSlot: "red", caption: "is force pushing to main" }),
+  copypaste: (t) => ({ pose: "read", props: [["clipboard", 13, 1]], fx: mid(cyc(t, ["ctrl+c", "ctrl+v"], 3)), fxSlot: "orange", caption: "is copying from stack overflow" }),
+  merge: (t) => {
+    const p = t % 8;
+    return { pose: p >= 6 ? "blocked" : "thinking", props: [[["rr", "rr"], 11 + Math.min(p, 3), 2], [["gg", "gg"], 18 - Math.min(p, 3), 2]], fx: p >= 4 ? ["<<<<", "====", ">>>>"] : BLANK, fxSlot: "yellow", caption: "is resolving a merge conflict" };
+  },
+  notfound: (t) => ({ pose: "thinking", fx: [cyc(t, ["4", "40", "404"], 2), "", t % 6 >= 3 ? " ?" : ""], fxSlot: "red", caption: "can't find the page" }),
+  kubernetes: (t) => ({ pose: "tool-use", props: [[cyc(t, ["helm", "helmTurn"], 2), 14, 0]], fx: mid("k8s"), fxSlot: "blue", caption: "is steering the cluster" }),
+  docker: (t) => ({ pose: "hop", props: [["whale", 13, cyc(t, [2, 2, 1])]], fx: cyc(t, [["~", "", ""], ["", "~", ""]], 2), fxSlot: "cyan", caption: "is shipping containers" }),
+  vim: (t) => ({ pose: t % 10 >= 8 ? "blocked" : "thinking", fx: mid(cyc(t, [":q", ":wq", ":q!", "esc", "help"], 2)), fxSlot: "green", caption: "is trying to exit vim" }),
+  tabs: (t) => ({ pose: t % 4 < 2 ? "blocked" : "idle", fx: ["tabs", " vs", "spaces"], fxSlot: cyc(t, ["orange", "cyan"], 2), caption: "is arguing tabs vs spaces" }),
+  bsod: (t) => ({ pose: "blocked", props: [["bsod", 13, 0]], fx: mid(t % 6 < 3 ? ":(" : ""), fxSlot: "blue", caption: "got a blue screen" }),
+  npm: (t) => {
+    const n = 1 + (Math.floor(t / 2) % 6);
+    const tower = Array.from({ length: n }, (_, i) => (i % 2 ? "oooo" : "yyyy"));
+    return { pose: n >= 5 ? "blocked" : "tool-use", props: [[tower, 14 + (n >= 5 ? t % 2 : 0), 6 - n]], fx: mid(n >= 5 ? "1.2 GB" : "npm i"), fxSlot: "red", caption: "is installing node_modules" };
+  },
+};
+
 export const POOLS_MORE = {
-  requesting: ["smoke", "paperplane", "walkie", "lighthouse", "beacon"],
-  thinking: ["abacus", "puzzle", "map", "compass", "hourglass", "maze", "sudoku", "math"],
-  tool: ["bricks", "screwdriver", "solder", "sewing", "crane", "printer3d", "anvil", "conveyor", "excavator"],
-  responding: ["stamp", "graffiti", "clapper", "neon", "fax", "notebook", "postits", "origami"],
+  requesting: ["smoke", "paperplane", "walkie", "lighthouse", "beacon", "friday", "offon", "thisisfine"],
+  thinking: ["abacus", "puzzle", "map", "compass", "hourglass", "maze", "sudoku", "math", "vim", "tabs", "notfound", "merge"],
+  tool: ["bricks", "screwdriver", "solder", "sewing", "crane", "printer3d", "anvil", "conveyor", "excavator", "rmrf", "docker", "kubernetes", "npm", "forcepush", "bsod"],
+  responding: ["stamp", "graffiti", "clapper", "neon", "fax", "notebook", "postits", "origami", "copypaste", "womm"],
 };

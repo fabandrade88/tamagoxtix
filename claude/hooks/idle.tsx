@@ -3,7 +3,7 @@
 // bathroom, a new scene every 20 seconds.
 import type { ClientModule, ClientSurface } from 'claude-code'
 
-import { idleSceneAt, octocat, scene } from './lib/scenes.mjs'
+import { gitlabFox, idleSceneAt, octocat, scene } from './lib/scenes.mjs'
 import { sceneRows } from './art'
 import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette } from '../types'
 
@@ -124,17 +124,21 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
   const showUsage = props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage
   const showGithub = props.github !== null && props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage + WIDTH.github
 
-  // the repository: an octocat, then name and stars, branch and its state,
+  // the repository: an octocat for GitHub or a fox for GitLab, then name and
+  // stars, branch and its state,
   // version, open issues and pull requests, and the last CI run
   const g = props.github
   const icon = props.icons === 'nerd' ? GLYPHS.nerd : GLYPHS.plain
   const githubColumn = g && (
     <Box flexDirection="row" gap={2}>
       <Box flexDirection="column">
-        {octocat(frame, 'fg').map(runs => (
+        {(g.forge === 'gitlab' ? gitlabFox(frame) : octocat(frame, 'fg')).map(runs => (
           <Text>
             {runs.map(run => (
-              <Text color={run.fg ? palette.fg : undefined} backgroundColor={run.bg ? palette.fg : undefined}>
+              <Text
+                color={run.fg ? (palette as Record<string, string>)[run.fg] ?? palette.fg : undefined}
+                backgroundColor={run.bg ? (palette as Record<string, string>)[run.bg] ?? palette.fg : undefined}
+              >
                 {run.text}
               </Text>
             ))}

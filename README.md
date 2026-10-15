@@ -2,7 +2,7 @@
 
 A tiny pixel monster that lives in your terminal while you work with Claude Code.
 It acts out what Claude is doing, hangs out with you between turns, and keeps an
-eye on your token usage and your GitHub repo.
+eye on your token usage and your GitHub or GitLab repo.
 
 Two pieces, one repo:
 
@@ -22,11 +22,14 @@ acting out the turn, with time and tokens as bars:
 ![Mining blocks while a tool runs](docs/screenshots/work-a.png)
 ![Lighting a neon sign while the answer is written](docs/screenshots/work-b.png)
 
-- **What it does depends on what Claude does**, with a new scene every few seconds:
+- **What it does depends on what Claude does**, with a new scene every 15 seconds:
   calling the API (laptop, satellite dish, paper airplane, lighthouse…),
   thinking (chess, Rubik's cube, crystal ball, maze, abacus…),
   using tools (hammer, saw, pickaxe, welding, 3D printer, crane…),
   writing the answer (keyboard, typewriter, quill, piano, neon sign, graffiti…).
+- **And IT life**: "this is fine", deploying on a Friday, trying to exit vim,
+  force pushing to main, a merge conflict, a blue screen, `rm -rf` in the wrong
+  folder, installing node_modules, tabs vs spaces, works on my machine…
 - **Time** fills a bar every minute and adds a `●` per minute.
 - **Tokens** fill a bar every 10k and add a `$` per 10k.
 
@@ -34,7 +37,7 @@ acting out the turn, with time and tokens as bars:
 
 Between turns the monster lives above the prompt and does its own thing — naps,
 eats pizza, does the laundry, plays guitar, trains with a laser sword, hatches a
-dragon egg, plays football, goes to the bathroom — a new scene every 20 seconds.
+dragon egg, plays football, goes to the bathroom — a new scene every 40 seconds.
 
 ![Idle scenes](docs/screenshots/scenes-idle.png)
 
@@ -42,11 +45,12 @@ Next to it:
 
 - **Usage** — your 5-hour and weekly limits as bars with the time until they
   reset, and this week's tokens per day.
-- **GitHub** — when the project is on GitHub: repo, stars, last CI run, branch,
-  commits ahead/behind, changed files, version, open issues and PRs. Uses `gh`
-  when it's signed in, the public API otherwise.
+- **Your repo** — with an octocat on GitHub, a fox on GitLab (gitlab.com or
+  your own instance): repo, stars, last CI run or pipeline, branch, commits
+  ahead/behind, changed files, version, open issues and pull/merge requests.
+  Uses `gh` or `glab` when signed in, the public API otherwise.
 
-Narrow terminal? The GitHub column goes first, then usage.
+Narrow terminal? The repo column goes first, then usage.
 
 ### Work scenes
 
@@ -60,10 +64,10 @@ colors. Don't like yours? `/tamaclaude reroll`.
 
 ### Token usage
 
-`/tamaclaude` opens a pane with today, the current 5-hour session and the week,
-your limits, the last 14 days and today by hour.
+`/tamaclaude` prints a usage card right in the chat: today, the current 5-hour
+session and the week, your limits, the last 14 days and today by hour.
 
-![The /tamaclaude pane](docs/screenshots/stats.png)
+![The /tamaclaude card](docs/screenshots/stats.png)
 
 Numbers come from Claude Code's own transcripts in `~/.claude/projects` (each
 API response counted once) and the limit readings Claude Code receives
@@ -116,7 +120,7 @@ description = "token usage"
 
 | Claude Code | |
 | --- | --- |
-| `/tamaclaude` | Token usage pane |
+| `/tamaclaude` | Token usage card |
 | `/tamaclaude palette [name]` | List palettes, or switch |
 | `/tamaclaude theme on` / `off` | Color the chat with the palette |
 | `/tamaclaude pet on` / `off` | Show or hide the monster between turns |

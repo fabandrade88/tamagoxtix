@@ -11,7 +11,6 @@ import {
 } from './lib/palettes.mjs'
 import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette, TamaUsage } from '../types'
 
-const PANE = 'tamaclaude-stats'
 const HERDR_SOURCE = 'tamaclaude'
 
 const palette = atom({ plugin: 'tamaclaude', key: 'palette' } as const, null)
@@ -134,19 +133,95 @@ async function run($: EngineInterface, argv: string[]): Promise<string | null> {
   }
 }
 
-function githubRepo(remote: string | null): string | null {
-  const m = remote?.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/)
-  return m ? `${m[1]}/${m[2]}` : null
+// The forge a remote lives on: github.com, or GitLab (gitlab.com or a
+// self-hosted instance whose host names it), with the project's path.
+function parseRemote(remote: string | null): { forge: 'github' | 'gitlab'; host: string; path: string } | null {
+  const m = remote?.match(/^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)(?::\d+(?=\/))?[:/](.+?)(?:\.git)?\/?$/)
+  if (!m) return null
+  const [, host = '', path = ''] = m
+  if (host === 'github.com') return { forge: 'github', host, path }
+  if (/gitlab/i.test(host)) return { forge: 'gitlab', host, path }
+  return null
 }
 
-// Local facts from git every time (cheap); the GitHub API part (issues, PRs,
-// stars, CI) at most every ten minutes, through gh when it is signed in.
+type Remote = Pick<TamaGithub, 'issues' | 'prs' | 'stars' | 'ci'>
+
+async function fetchGithub($: EngineInterface, path: string, branch: string): Promise<Remote> {
+  const remote: Remote = { issues: null, prs: null, stars: null, ci: null }
+  const info = await run($, ['gh', 'api', `repos/${path}`, '--jq', '[.open_issues_count, .stargazers_count] | @tsv'])
+  const prs = await run($, ['gh', 'pr', 'list', '-R', path, '--state', 'open', '--limit', '100', '--json', 'number', '--jq', 'length'])
+  if (info) {
+    const [open = 0, stars = 0] = info.split('\t').map(Number)
+    remote.prs = prs === null ? null : Number(prs)
+    remote.issues = Math.max(0, open - (remote.prs ?? 0))
+    remote.stars = stars
+  } else {
+    // no gh: the public API still answers for public repositories
+    try {
+      const res = await $.http.fetch(`https://api.github.com/repos/${path}`)
+      if (res.ok) {
+        const body = JSON.parse(res.text) as { open_issues_count?: number; stargazers_count?: number }
+        remote.issues = body.open_issues_count ?? null
+        remote.stars = body.stargazers_count ?? null
+      }
+    } catch {}
+  }
+  const runs = await run($, ['gh', 'run', 'list', '-R', path, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\(.status) \(.conclusion)"'])
+  if (runs && !runs.startsWith('null')) {
+    const [state, conclusion] = runs.split(' ')
+    remote.ci = state !== 'completed' ? 'pending' : conclusion === 'success' ? 'success' : 'failure'
+  }
+  return remote
+}
+
+// GitLab through glab when it is installed and signed in, else the
+// instance's public API (public projects only).
+async function fetchGitlab($: EngineInterface, host: string, path: string, branch: string): Promise<Remote> {
+  const remote: Remote = { issues: null, prs: null, stars: null, ci: null }
+  const id = encodeURIComponent(path)
+  const get = async (endpoint: string): Promise<unknown> => {
+    const viaGlab = await run($, ['glab', 'api', '--hostname', host, endpoint])
+    if (viaGlab) {
+      try {
+        return JSON.parse(viaGlab)
+      } catch {}
+    }
+    try {
+      const res = await $.http.fetch(`https://${host}/api/v4/${endpoint}`)
+      return res.ok ? JSON.parse(res.text) : null
+    } catch {
+      return null
+    }
+  }
+  // GitLab counts a list in its x-total header
+  const count = async (endpoint: string): Promise<number | null> => {
+    try {
+      const res = await $.http.fetch(`https://${host}/api/v4/${endpoint}&per_page=1`)
+      const total = Object.entries(res.headers).find(([k]) => k.toLowerCase() === 'x-total')?.[1]
+      if (res.ok && total !== undefined) return Number(total)
+    } catch {}
+    const list = await get(`${endpoint}&per_page=100`)
+    return Array.isArray(list) ? list.length : null
+  }
+  const project = (await get(`projects/${id}`)) as { star_count?: number; open_issues_count?: number } | null
+  if (project) remote.stars = project.star_count ?? null
+  remote.issues = project?.open_issues_count ?? (await count(`projects/${id}/issues?state=opened`))
+  remote.prs = await count(`projects/${id}/merge_requests?state=opened`)
+  const pipelines = await get(`projects/${id}/pipelines?ref=${encodeURIComponent(branch)}&per_page=1`)
+  const status = Array.isArray(pipelines) ? (pipelines[0] as { status?: string } | undefined)?.status : undefined
+  if (status) remote.ci = status === 'success' ? 'success' : status === 'failed' || status === 'canceled' ? 'failure' : 'pending'
+  return remote
+}
+
+// Local facts from git every time (cheap); the forge's part (issues, pull or
+// merge requests, stars, CI) at most every ten minutes.
 async function refreshGithub($: EngineInterface) {
-  const repo = githubRepo(await run($, ['git', 'remote', 'get-url', 'origin']))
-  if (!repo) {
+  const parsed = parseRemote(await run($, ['git', 'remote', 'get-url', 'origin']))
+  if (!parsed) {
     await update($, github, () => null)
     return
   }
+  const repo = parsed.path
   const branch = (await run($, ['git', 'rev-parse', '--abbrev-ref', 'HEAD'])) ?? '?'
   const status = (await run($, ['git', 'status', '--porcelain'])) ?? ''
   const counts = (await run($, ['git', 'rev-list', '--left-right', '--count', '@{u}...HEAD'])) ?? ''
@@ -157,6 +232,7 @@ async function refreshGithub($: EngineInterface) {
     version = pkg.version ? `v${pkg.version}` : null
   }
   const local = {
+    forge: parsed.forge,
     repo,
     branch,
     dirty: status ? status.split('\n').length : 0,
@@ -167,35 +243,15 @@ async function refreshGithub($: EngineInterface) {
 
   const previous = await read($, github)
   const fresh = previous?.repo === repo && Date.now() - previous.fetchedAt < GITHUB_TTL
-  let remote = fresh && previous
-    ? { issues: previous.issues, prs: previous.prs, stars: previous.stars, ci: previous.ci, fetchedAt: previous.fetchedAt }
-    : null
-  if (!remote) {
-    remote = { issues: null, prs: null, stars: null, ci: null, fetchedAt: Date.now() }
-    const info = await run($, ['gh', 'api', `repos/${repo}`, '--jq', '[.open_issues_count, .stargazers_count] | @tsv'])
-    const prs = await run($, ['gh', 'pr', 'list', '-R', repo, '--state', 'open', '--limit', '100', '--json', 'number', '--jq', 'length'])
-    if (info) {
-      const [open = 0, stars = 0] = info.split('\t').map(Number)
-      remote.prs = prs === null ? null : Number(prs)
-      remote.issues = Math.max(0, open - (remote.prs ?? 0))
-      remote.stars = stars
-    } else {
-      // no gh: the public API still answers for public repositories
-      try {
-        const res = await $.http.fetch(`https://api.github.com/repos/${repo}`)
-        if (res.ok) {
-          const body = JSON.parse(res.text) as { open_issues_count?: number; stargazers_count?: number }
-          remote.issues = body.open_issues_count ?? null
-          remote.stars = body.stargazers_count ?? null
+  const remote: Remote & { fetchedAt: number } =
+    fresh && previous
+      ? { issues: previous.issues, prs: previous.prs, stars: previous.stars, ci: previous.ci, fetchedAt: previous.fetchedAt }
+      : {
+          ...(parsed.forge === 'github'
+            ? await fetchGithub($, repo, branch)
+            : await fetchGitlab($, parsed.host, repo, branch)),
+          fetchedAt: Date.now(),
         }
-      } catch {}
-    }
-    const runs = await run($, ['gh', 'run', 'list', '-R', repo, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\(.status) \(.conclusion)"'])
-    if (runs && !runs.startsWith('null')) {
-      const [state, conclusion] = runs.split(' ')
-      remote.ci = state !== 'completed' ? 'pending' : conclusion === 'success' ? 'success' : 'failure'
-    }
-  }
   const next: TamaGithub = { ...local, ...remote }
   await update($, github, () => next)
 }
@@ -476,9 +532,11 @@ export const register: Register = on => {
     )
   })
 
-  // ---- the stats pane ----
+  // ---- /tamaclaude: a usage card drawn in the transcript ----
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+  on('ui.render', { component: 'CommandOutput', props: { command: 'tamaclaude' } }, async ($, e, next) => {
+    const sub = e.props.args.trim().split(/\s+/)[0] || 'stats'
+    if (sub !== 'stats' || e.surface !== 'terminal' || e.props.isErrored) return next(e)
     const { Box, Text } = $.ui.resolve(e)
     const [pal, pet, data, windows] = [
       await read($, palette),
@@ -487,7 +545,17 @@ export const register: Register = on => {
       await read($, limits),
     ]
     const p = pal ?? (resolvePalette('claude') as TamaPalette)
-    const width = Math.max(30, e.props.bodyColumns - 2)
+    if (!data) return next(e)
+    const width = Math.max(60, Math.min(78, (e.viewport?.columns ?? 100) - 4))
+
+    const title = (text: string) => (
+      <Text>
+        <Text color={p.accent}>▍</Text>
+        <Text color={p.fg} bold>
+          {` ${text}`}
+        </Text>
+      </Text>
+    )
 
     const sprite = pet
       ? spriteRuns(pet, 'idle', 0).map(runs => (
@@ -504,103 +572,94 @@ export const register: Register = on => {
         ))
       : []
 
-    if (!data) {
-      return (
-        <Box flexDirection="column">
-          <Text color={p.muted}>Reading Claude Code transcripts…</Text>
-        </Box>
-      )
-    }
-
     const limitRow = (label: string, kind: string) => {
       const l = windows.find(w => w.kind === kind)
-      if (!l) {
-        return (
-          <Text>
-            <Text color={p.fg}>{label.padEnd(10)}</Text>
-            <Text color={p.muted}>no reading yet</Text>
-          </Text>
-        )
-      }
-      const color = l.percentUsed >= 90 ? p.red : l.percentUsed >= 70 ? p.orange : p.green
-      const [full, empty] = meter(l.percentUsed / 100, 16)
-      const reset = resetIn(l.resetsAt)
+      const pct = l?.percentUsed ?? 0
+      const color = !l ? p.muted : pct >= 90 ? p.red : pct >= 70 ? p.orange : p.cyan
+      const [full, empty] = meter(pct / 100, 24)
+      const reset = resetIn(l?.resetsAt)
       return (
         <Text>
-          <Text color={p.fg}>{label.padEnd(10)}</Text>
+          <Text color={p.fg}>{label.padEnd(8)}</Text>
           <Text color={color}>{full}</Text>
           <Text color={p.muted}>{empty}</Text>
           <Text color={color} bold>
-            {` ${Math.round(l.percentUsed)}%`}
+            {l ? ` ${String(Math.round(pct)).padStart(3)}%` : '   —'}
           </Text>
-          {reset ? <Text color={p.muted}>{`  resets in ${reset}`}</Text> : null}
+          <Text color={p.muted}>{reset ? `   ⟳ ${reset}` : l ? '' : '   no reading yet'}</Text>
         </Text>
       )
     }
 
+    // last 14 days: bars three cells wide, today in the accent color
     const days = data.days
-    const colWidth = Math.max(1, Math.min(3, Math.floor(width / days.length) - 1))
     const dayRows = columnRows(days.map(d => d.tokens), 5)
+    const dayChart = dayRows.map(row => (
+      <Text>
+        {row.map((ch, i) => (
+          <Text color={i === row.length - 1 ? p.accent : p.blue}>{ch.repeat(3) + ' '}</Text>
+        ))}
+      </Text>
+    ))
+    const dayLabels = days.map(d => d.date.slice(8).padEnd(4)).join('')
+
+    // today by hour: one bar per hour, the current one in the accent color
+    const hourNow = new Date().getHours()
     const hourRows = columnRows(data.today.hours.map(h => h.tokens), 3)
+    const hourChart = hourRows.map(row => (
+      <Text>
+        {row.map((ch, i) => (
+          <Text color={i === hourNow ? p.accent : p.green}>{ch.repeat(2) + ' '}</Text>
+        ))}
+      </Text>
+    ))
+    const hourLabels = data.today.hours.map(h => (h.hour % 6 === 0 ? String(h.hour) : '').padEnd(3)).join('')
 
     return (
-      <Box flexDirection="column">
-        <Box flexDirection="row" gap={2}>
+      <Box flexDirection="column" borderStyle="round" borderColor={p.muted} paddingX={2} paddingY={0} width={width}>
+        <Box flexDirection="row" gap={3}>
           <Box flexDirection="column">{sprite}</Box>
           <Box flexDirection="column">
             <Text>
-              <Text color={p.fg}>{'Today'.padEnd(9)}</Text>
+              <Text color={p.accent} bold>
+                {pet?.name ?? 'tamaclaude'}
+              </Text>
+              <Text color={p.muted}>{`  ·  token usage  ·  ${p.label}`}</Text>
+            </Text>
+            <Text>
+              <Text color={p.muted}>today </Text>
               <Text color={p.yellow} bold>
                 {formatTokens(data.today.tokens)}
               </Text>
-              <Text color={p.muted}>{` tokens · ${formatTokens(data.today.output)} out`}</Text>
-            </Text>
-            <Text>
-              <Text color={p.fg}>{'Session'.padEnd(9)}</Text>
+              <Text color={p.muted}>{`   session `}</Text>
               <Text color={p.cyan} bold>
                 {formatTokens(data.session?.tokens ?? 0)}
               </Text>
-              <Text color={p.muted}> tokens</Text>
-            </Text>
-            <Text>
-              <Text color={p.fg}>{'Week'.padEnd(9)}</Text>
+              <Text color={p.muted}>{`   week `}</Text>
               <Text color={p.magenta} bold>
                 {formatTokens(data.week.tokens)}
               </Text>
-              <Text color={p.muted}> tokens</Text>
             </Text>
+            <Text color={p.muted}>{`${formatTokens(data.today.output)} written by Claude today`}</Text>
           </Box>
         </Box>
         <Text> </Text>
-        {limitRow('5h limit', 'five_hour')}
-        {limitRow('Weekly', 'seven_day')}
+        {title('limits')}
+        {limitRow('5h', 'five_hour')}
+        {limitRow('week', 'seven_day')}
         <Text> </Text>
         <Text>
-          <Text color={p.fg} bold>
-            Last 14 days
-          </Text>
-          <Text color={p.muted}>{` · max ${formatTokens(Math.max(...days.map(d => d.tokens)))}`}</Text>
+          {title('last 14 days')}
+          <Text color={p.muted}>{`   max ${formatTokens(Math.max(...days.map(d => d.tokens)))}`}</Text>
         </Text>
-        {dayRows.map(row => (
-          <Text>
-            {row.map((ch, i) => (
-              <Text color={i === row.length - 1 ? p.accent : p.blue}>{ch.repeat(colWidth) + ' '}</Text>
-            ))}
-          </Text>
-        ))}
-        <Text color={p.muted}>{days.map(d => d.date.slice(8).padEnd(colWidth + 1).slice(0, colWidth + 1)).join('')}</Text>
+        {dayChart}
+        <Text color={p.muted}>{dayLabels}</Text>
         <Text> </Text>
-        <Text color={p.fg} bold>
-          Today by hour
-        </Text>
-        {hourRows.map(row => (
-          <Text color={p.green}>{row.map(ch => ch + ' ').join('')}</Text>
-        ))}
-        <Text color={p.muted}>
-          {data.today.hours.map(h => (h.hour % 6 === 0 ? String(h.hour) : '').padEnd(2)).join('')}
-        </Text>
+        {title('today by hour')}
+        {hourChart}
+        <Text color={p.muted}>{hourLabels}</Text>
         <Text> </Text>
-        <Text color={p.muted}>{`palette ${p.label} · /tamaclaude palette <name> · esc closes`}</Text>
+        <Text color={p.muted}>/tamaclaude palette · theme on|off · pet on|off · reroll</Text>
       </Box>
     )
   })
@@ -611,9 +670,16 @@ export const register: Register = on => {
     const [sub = 'stats', arg] = e.args.trim().split(/\s+/).filter(Boolean)
 
     if (sub === 'stats') {
-      void refreshUsage($)
-      await $.ui.open({ id: PANE, title: 'tamaclaude · token usage', focus: true, closeOnEscape: true })
-      return { text: 'Opened the token usage pane.' }
+      await refreshUsage($)
+      const data = await read($, usage)
+      const windows = await read($, limits)
+      const pct = (kind: string) => windows.find(w => w.kind === kind)?.percentUsed
+      // the row the model reads; the card above is drawn from the same numbers
+      return {
+        text: data
+          ? `Token usage: today ${formatTokens(data.today.tokens)}, this 5h session ${formatTokens(data.session?.tokens ?? 0)}, this week ${formatTokens(data.week.tokens)}. Limits: 5h ${pct('five_hour') ?? '?'}%, week ${pct('seven_day') ?? '?'}%.`
+          : 'Token usage is not available yet.',
+      }
     }
 
     if (sub === 'palette') {

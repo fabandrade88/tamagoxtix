@@ -38,8 +38,9 @@ export type TamaUsage = {
   session: { start: number; end: number; tokens: number } | null
   week: { start: number; tokens: number }
 }
-/** The project's repository, when it lives on GitHub. */
+/** The project's repository, when it lives on GitHub or GitLab. */
 export type TamaGithub = {
+  forge: 'github' | 'gitlab'
   repo: string
   branch: string
   dirty: number
