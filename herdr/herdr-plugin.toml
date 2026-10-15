@@ -1,0 +1,72 @@
+id = "tamaclaude"
+name = "Tamaclaude"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Little pixel monsters for your agents: animated sidebar faces, token usage charts and Omarchy-style palettes."
+platforms = ["linux", "macos", "windows"]
+
+[[startup]]
+command = ["node", "src/hook.mjs"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["node", "src/hook.mjs"]
+
+[[events]]
+on = "pane.agent_detected"
+command = ["node", "src/hook.mjs"]
+
+[[events]]
+on = "pane.closed"
+command = ["node", "src/hook.mjs"]
+
+[[actions]]
+id = "stats"
+title = "Tamaclaude: token usage"
+command = ["node", "src/actions.mjs", "stats"]
+
+[[actions]]
+id = "sidebar-install"
+title = "Tamaclaude: put monsters in the sidebar"
+command = ["node", "src/sidebar.mjs", "install"]
+
+[[actions]]
+id = "sidebar-uninstall"
+title = "Tamaclaude: restore herdr's sidebar"
+command = ["node", "src/sidebar.mjs", "uninstall"]
+
+[[actions]]
+id = "sidebar-refresh"
+title = "Tamaclaude: recolor the sidebar"
+command = ["node", "src/sidebar.mjs", "refresh"]
+
+[[actions]]
+id = "palette-next"
+title = "Tamaclaude: next palette"
+command = ["node", "src/actions.mjs", "palette-next"]
+
+[[actions]]
+id = "icon"
+title = "Tamaclaude: choose this agent's icon"
+command = ["node", "src/actions.mjs", "icon"]
+
+[[actions]]
+id = "reroll"
+title = "Tamaclaude: new monster for this agent"
+command = ["node", "src/actions.mjs", "reroll"]
+
+[[panes]]
+id = "stats"
+title = "Tamaclaude"
+placement = "popup"
+width = "80%"
+height = 34
+command = ["node", "src/stats.mjs"]
+
+[[panes]]
+id = "icon-picker"
+title = "Tamaclaude icons"
+placement = "popup"
+width = 44
+height = 20
+command = ["node", "src/picker.mjs"]

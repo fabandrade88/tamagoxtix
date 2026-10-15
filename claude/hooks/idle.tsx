@@ -1,0 +1,206 @@
+// Surface module for the band above the prompt while Claude waits for you:
+// the monster naps, snacks, sips coffee, plays, reads or goes to the
+// bathroom, a new scene every 20 seconds.
+import type { ClientModule, ClientSurface } from 'claude-code'
+
+import { idleSceneAt, octocat, scene } from './lib/scenes.mjs'
+import { sceneRows } from './art'
+import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette } from '../types'
+
+export type IdleProps = {
+  monster: TamaMonster
+  palette: TamaPalette
+  idleSince: number
+  todayTokens: number | null
+  /** The 5-hour and weekly windows, as Claude Code last reported them. */
+  limits: TamaLimit[]
+  /** Monday to Sunday of this week: tokens per day, today marked. */
+  week: { label: string; tokens: number; isToday: boolean; isFuture: boolean }[]
+  /** The project's GitHub repository, or null when it is not on GitHub. */
+  github: TamaGithub | null
+  /** The band's width: columns that do not fit are left out. */
+  columns: number
+  /** "nerd" draws Nerd Font icons, anything else plain symbols. */
+  icons: string
+}
+
+// GitHub glyphs: octicons from a Nerd Font, or plain symbols without one.
+const GLYPHS = {
+  nerd: { branch: '\u{f418}', issue: '\u{f41b}', pr: '\u{f407}', tag: '\u{f412}', star: '\u{f41e}', ok: '\u{f49e}', fail: '\u{f52f}', pending: '\u{f444}' },
+  plain: { branch: '⎇', issue: '◎', pr: '⇄', tag: '⌁', star: '★', ok: '✓', fail: '✗', pending: '●' },
+}
+
+// Widths of the band's parts, to decide what fits.
+const WIDTH = { scene: 28, caption: 46, usage: 40, github: 46 }
+
+type State = { frame: number }
+
+const FRAME_MS = 320
+
+function formatTokens(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k`
+  return String(Math.round(n))
+}
+
+function formatIdle(ms: number): string {
+  const m = Math.floor(ms / 60_000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m`
+  return `${Math.floor(m / 60)}h ${m % 60}m`
+}
+
+const BAR_CELLS = 8
+const LEVELS = ['·', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
+
+function bar(percent: number): string {
+  const filled = Math.round((Math.max(0, Math.min(100, percent)) / 100) * BAR_CELLS)
+  return '▰'.repeat(filled) + '▱'.repeat(BAR_CELLS - filled)
+}
+
+function resetIn(iso: string | undefined, now: number): string {
+  const ms = iso ? Date.parse(iso) - now : NaN
+  if (!Number.isFinite(ms) || ms <= 0) return ''
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`
+  return h ? `${h}h ${m}m` : `${m}m`
+}
+
+const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<State>) => {
+  const { Box, Text } = surface.elements
+  if (surface.state === undefined) {
+    surface.every(FRAME_MS, () => surface.setState({ frame: (surface.state?.frame ?? 0) + 1 }))
+  }
+  const frame = surface.state?.frame ?? 0
+  const { monster, palette } = props
+  const now = Date.now()
+  const data = scene(monster, idleSceneAt(monster, now), frame)
+
+  // usage beside the monster: the two limit windows as bars like the
+  // spinner's, then this week's days as one column each
+  const limitRow = (label: string, kind: string) => {
+    const l = props.limits.find(w => w.kind === kind)
+    if (!l) {
+      return (
+        <Text>
+          <Text color={palette.fg}>{label.padEnd(6)}</Text>
+          <Text color={palette.muted}>{'▱'.repeat(BAR_CELLS)} no reading yet</Text>
+        </Text>
+      )
+    }
+    const color = l.percentUsed >= 90 ? palette.red : l.percentUsed >= 70 ? palette.orange : palette.cyan
+    const reset = resetIn(l.resetsAt, now)
+    return (
+      <Text>
+        <Text color={palette.fg}>{label.padEnd(6)}</Text>
+        <Text color={color}>{bar(l.percentUsed)}</Text>
+        <Text color={color} bold>{` ${String(Math.round(l.percentUsed)).padStart(3)}%`}</Text>
+        {reset ? <Text color={palette.muted}>{`  ⟳ ${reset}`}</Text> : null}
+      </Text>
+    )
+  }
+  const max = Math.max(1, ...props.week.map(d => d.tokens))
+  const weekRow = (
+    <Text>
+      <Text color={palette.fg}>{'days'.padEnd(6)}</Text>
+      {props.week.map(d => {
+        const level = d.isFuture ? ' ' : (LEVELS[d.tokens ? Math.max(1, Math.round((d.tokens / max) * 8)) : 0] ?? '·')
+        return (
+          <Text>
+            <Text color={d.isToday ? palette.accent : palette.muted} bold={d.isToday}>
+              {d.label}
+            </Text>
+            <Text color={d.isToday ? palette.accent : palette.yellow}>{level} </Text>
+          </Text>
+        )
+      })}
+    </Text>
+  )
+  const separator = () => (
+    <Box flexDirection="column">{['│', '│', '│'].map(line => <Text color={palette.muted}>{line}</Text>)}</Box>
+  )
+  const showUsage = props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage
+  const showGithub = props.github !== null && props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage + WIDTH.github
+
+  // the repository: an octocat, then name and stars, branch and its state,
+  // version, open issues and pull requests, and the last CI run
+  const g = props.github
+  const icon = props.icons === 'nerd' ? GLYPHS.nerd : GLYPHS.plain
+  const githubColumn = g && (
+    <Box flexDirection="row" gap={2}>
+      <Box flexDirection="column">
+        {octocat(frame, 'fg').map(runs => (
+          <Text>
+            {runs.map(run => (
+              <Text color={run.fg ? palette.fg : undefined} backgroundColor={run.bg ? palette.fg : undefined}>
+                {run.text}
+              </Text>
+            ))}
+          </Text>
+        ))}
+      </Box>
+      <Box flexDirection="column">
+        <Text>
+          <Text color={palette.fg} bold>
+            {g.repo}
+          </Text>
+          {g.stars !== null && <Text color={palette.yellow}>{`  ${icon.star} ${g.stars}`}</Text>}
+          {g.ci && (
+            <Text color={g.ci === 'success' ? palette.green : g.ci === 'failure' ? palette.red : palette.yellow}>
+              {`  ${g.ci === 'success' ? icon.ok : g.ci === 'failure' ? icon.fail : icon.pending} ci`}
+            </Text>
+          )}
+        </Text>
+        <Text>
+          <Text color={palette.magenta}>{`${icon.branch} ${g.branch}`}</Text>
+          {g.ahead > 0 && <Text color={palette.green}>{` ↑${g.ahead}`}</Text>}
+          {g.behind > 0 && <Text color={palette.orange}>{` ↓${g.behind}`}</Text>}
+          {g.dirty > 0 && <Text color={palette.yellow}>{` ●${g.dirty}`}</Text>}
+        </Text>
+        <Text>
+          {g.version && <Text color={palette.cyan}>{`${icon.tag} ${g.version}  `}</Text>}
+          {g.issues !== null && <Text color={palette.green}>{`${icon.issue} ${g.issues}  `}</Text>}
+          {g.prs !== null && <Text color={palette.blue}>{`${icon.pr} ${g.prs}`}</Text>}
+        </Text>
+      </Box>
+    </Box>
+  )
+
+  return (
+    <Box flexDirection="row" gap={3} marginTop={1}>
+      <Box flexDirection="column">{sceneRows(Text, monster, palette, data)}</Box>
+      <Box flexDirection="column">
+        <Text>
+          <Text color={palette.accent} bold>
+            {monster.name}
+          </Text>
+          <Text color={palette.fg}> {data.caption}</Text>
+        </Text>
+        <Text color={palette.muted}>waiting for you · idle {formatIdle(now - props.idleSince)}</Text>
+        <Text>
+          {props.todayTokens !== null && (
+            <Text>
+              <Text color={palette.yellow}>$ {formatTokens(props.todayTokens)}</Text>
+              <Text color={palette.muted}> tokens today · </Text>
+            </Text>
+          )}
+          <Text color={palette.muted}>/tamaclaude for stats</Text>
+        </Text>
+      </Box>
+      {showUsage && separator()}
+      {showUsage && (
+        <Box flexDirection="column">
+          {limitRow('5h', 'five_hour')}
+          {limitRow('week', 'seven_day')}
+          {weekRow}
+        </Box>
+      )}
+      {showGithub && separator()}
+      {showGithub && githubColumn}
+    </Box>
+  )
+}
+
+export default Idle
