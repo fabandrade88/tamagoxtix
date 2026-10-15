@@ -9,11 +9,12 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const targets = {
   "monsters.mjs": ["herdr/src/lib", "claude/hooks/lib"],
-  "palettes.mjs": ["herdr/src/lib", "claude/hooks/lib"],
+  "palettes.mjs": ["herdr/src/lib", "claude/hooks/lib", "claude/scripts"],
   "icons.mjs": ["herdr/src/lib", "claude/hooks/lib"],
   "scenes.mjs": ["herdr/src/lib", "claude/hooks/lib"],
   "scenes-more.mjs": ["herdr/src/lib", "claude/hooks/lib"],
-  "forge.mjs": ["herdr/src/lib", "claude/hooks/lib"],
+  "forge.mjs": ["herdr/src/lib", "claude/hooks/lib", "claude/scripts"],
+  "powerline.mjs": ["claude/scripts"],
   "usage-node.mjs": ["herdr/src/lib", "claude/scripts"],
 };
 const check = process.argv.includes("--check");

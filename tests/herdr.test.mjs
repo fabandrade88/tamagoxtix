@@ -55,3 +55,55 @@ test("usage survives an empty, missing or corrupt transcripts folder", async () 
   assert.equal(s.today.tokens, 0);
   assert.equal(s.days.length, 3);
 });
+
+test("the herdr look goes in and comes out without changing the person's config", async () => {
+  const { apply, strip } = await import("../herdr/src/theme.mjs");
+  const { PALETTES, resolvePalette } = await import("../herdr/src/lib/palettes.mjs");
+  const original = [
+    'onboarding = false',
+    '[theme]',
+    'name = "terminal"',
+    '[theme.custom]',
+    'panel_bg = "black"',
+    '[ui]',
+    'accent = "blue"',
+    'tab_bar_right = [',
+    '  { type = "hostname" },',
+    ']',
+    'pane_gaps = false',
+    '',
+  ].join("\n");
+  for (const id of Object.keys(PALETTES)) {
+    const themed = apply(original, resolvePalette(id));
+    assert.equal(strip(themed).replace(/\n*$/, "\n"), original, id);
+    assert.match(themed, /# tamaclaude-disabled: panel_bg = "black"/);
+    assert.match(themed, /# tamaclaude-disabled: {3}\{ type = "hostname" \},/);
+    assert.equal(apply(themed, resolvePalette(id)), themed, `${id}: applying twice changes nothing`);
+    if (hasHerdr) {
+      mkdirSync(join(root, "config", "herdr"), { recursive: true });
+      writeFileSync(join(root, "config", "herdr", "config.toml"), themed);
+      const res = spawnSync("herdr", ["config", "check"], { env: { ...process.env, HOME: root }, encoding: "utf8" });
+      assert.equal(res.stdout.trim(), "config: ok", `${id}: ${res.stdout}${res.stderr}`);
+    }
+  }
+});
+
+test("the powerline status line draws every segment and survives empty input", () => {
+  const script = new URL("../claude/scripts/statusline.mjs", import.meta.url).pathname;
+  const input = {
+    model: { display_name: "Opus 5.5" },
+    workspace: { current_dir: root },
+    context_window: { used_percentage: 95 },
+    rate_limits: { five_hour: { used_percentage: 20 }, seven_day: { used_percentage: 75 } },
+    cost: { total_duration_ms: 3_900_000 },
+  };
+  const res = spawnSync(process.execPath, [script], { input: JSON.stringify(input), encoding: "utf8" });
+  assert.equal(res.status, 0, res.stderr);
+  const text = res.stdout.replace(/\x1b\[[0-9;]*m/g, "");
+  for (const part of ["Opus 5.5", "95%", "5h 20%", "wk 75%", "1h05", ""]) assert.ok(text.includes(part), part);
+  assert.match(res.stdout, /\x1b\[48;2;/, "segments have background colors");
+  const empty = spawnSync(process.execPath, [script], { input: "", encoding: "utf8" });
+  assert.equal(empty.status, 0);
+  const hostile = spawnSync(process.execPath, [script], { input: JSON.stringify({ model: { display_name: "x\u001b]0;pwn\u0007" } }), encoding: "utf8" });
+  assert.ok(!hostile.stdout.includes("\u001b]0;"), "no escape sequences from the input");
+});

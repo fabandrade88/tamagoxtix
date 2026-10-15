@@ -6,6 +6,7 @@ import { activePalette, writeConfig } from "./common.mjs";
 import { claudeTheme } from "./lib/palettes.mjs";
 import { claudeDir } from "./lib/usage-node.mjs";
 import { refresh as refreshSidebar } from "./sidebar.mjs";
+import { refresh as refreshTheme } from "./theme.mjs";
 
 export function applyPalette(choice) {
   const palette = activePalette(writeConfig({ palette: choice }));
@@ -17,5 +18,6 @@ export function applyPalette(choice) {
     writeFileSync(join(dir, "tamaclaude.json"), JSON.stringify(claudeTheme(palette), null, 2) + "\n");
   } catch {}
   refreshSidebar();
+  refreshTheme();
   return palette;
 }

@@ -13,6 +13,14 @@ if (process.env.TAMACLAUDE_DEBUG) {
   appendFileSync(join(stateDir(), "herdr-events.log"), JSON.stringify({ eventName, event }) + "\n");
 }
 
+// keep the status bar script current after the plugin updates
+if (eventName === "startup") {
+  try {
+    const { readConfig } = await import("./common.mjs");
+    if (readConfig().herdrTheme === true) (await import("./theme.mjs")).install();
+  } catch {}
+}
+
 if (!sidebarEnabled()) {
   // sidebar icons are off: nothing to paint
 } else if (eventName === "startup") {

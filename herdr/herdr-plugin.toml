@@ -26,6 +26,21 @@ title = "Tamaclaude: token usage"
 command = ["node", "src/actions.mjs", "stats"]
 
 [[actions]]
+id = "theme-install"
+title = "Tamaclaude: herdr look (palette colors, status bar, sidebar colors)"
+command = ["node", "src/theme.mjs", "install"]
+
+[[actions]]
+id = "theme-uninstall"
+title = "Tamaclaude: restore herdr's own look"
+command = ["node", "src/theme.mjs", "uninstall"]
+
+[[actions]]
+id = "theme-refresh"
+title = "Tamaclaude: recolor the herdr look"
+command = ["node", "src/theme.mjs", "refresh"]
+
+[[actions]]
 id = "sidebar-install"
 title = "Tamaclaude: put monsters in the sidebar"
 command = ["node", "src/sidebar.mjs", "install"]

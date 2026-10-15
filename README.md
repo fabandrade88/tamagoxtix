@@ -91,10 +91,20 @@ Everything is drawn in one palette, switchable at any time:
 `/tamaclaude theme on` also colors the chat itself, mapped the way Omarchy themes
 Claude Code; `/tamaclaude theme off` goes back to your theme.
 
+### Powerline status line
+
+`/tamaclaude statusline on` turns Claude Code's status line into oh-my-posh
+style segments in your palette: model, folder, git branch, context, the 5-hour
+and weekly limits and the session's time. `off` puts yours back.
+
 ### In herdr
 
-The herdr plugin adds a usage popup (same numbers, `p` to switch palette) and,
-optionally, critter icons in the sidebar.
+The herdr plugin adds a usage popup (same numbers, `p` to switch palette) and
+an optional herdr look, `tamaclaude.theme-install`: herdr's colors from your
+palette, a status area right of the tabs (branch, tokens today, limits, clock)
+with icons and powerline separators, and palette colors on the sidebar rows.
+herdr has no background colors for these, so the arrows are separators rather
+than filled segments. `tamaclaude.theme-uninstall` restores your config exactly.
 
 ![herdr usage popup](docs/screenshots/herdr-stats.png)
 
@@ -148,6 +158,7 @@ description = "token usage"
 | `/tamaclaude` | Token usage card |
 | `/tamaclaude palette [name]` | List palettes, or switch |
 | `/tamaclaude theme on` / `off` | Color the chat with the palette |
+| `/tamaclaude statusline on` / `off` | Powerline status line |
 | `/tamaclaude pet on` / `off` | Show or hide the monster between turns |
 | `/tamaclaude icon [name]` / `icons nerd\|emoji` | Pick the sidebar icon, or the icon set |
 | `/tamaclaude reroll` | A new monster |
@@ -155,6 +166,7 @@ description = "token usage"
 | herdr action | |
 | --- | --- |
 | `tamaclaude.stats` | Token usage popup |
+| `tamaclaude.theme-install` / `theme-uninstall` | The tamaclaude look for herdr |
 | `tamaclaude.palette-next` | Next palette |
 | `tamaclaude.sidebar-install` / `sidebar-uninstall` | Critter icons in the sidebar (optional) |
 | `tamaclaude.icon` / `tamaclaude.reroll` | Pick or reroll the focused agent's icon |
@@ -167,7 +179,10 @@ Settings live in `~/.config/tamaclaude/config.json`, shared by both.
 claude --plugin-dir ./claude      # run the mod from this checkout
 herdr plugin link ./herdr         # run the herdr plugin from this checkout
 npm run sync                      # after editing shared/, copy it into both packages
-npm test
+npm test                          # all of the below
+npm run test:unit                 # unit tests (node --test, claude plugin test)
+npm run test:security             # argv-only commands, known APIs and paths, no secrets
+npm run test:perf                 # frame, usage-reading and hook budgets
 ```
 
 `shared/` holds the monsters, scenes, palettes and usage reader; each package

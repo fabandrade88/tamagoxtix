@@ -324,6 +324,7 @@ async function applyPalette($: EngineInterface, choice: string): Promise<TamaPal
   if (await herdrPane($)) {
     try {
       await herdr($, ['plugin', 'action', 'invoke', 'tamaclaude.sidebar-refresh'])
+      await herdr($, ['plugin', 'action', 'invoke', 'tamaclaude.theme-refresh'])
     } catch {}
   }
   return next
@@ -345,6 +346,46 @@ async function loadSession($: EngineInterface) {
   void refreshGithub($)
 }
 
+// ---- the powerline status line ----
+
+const STATUSLINE_FILES = ['statusline.mjs', 'palettes.mjs', 'powerline.mjs', 'forge.mjs']
+
+// Copies the status line script to a folder that survives plugin updates
+// (the plugin's own folder moves with each version) and returns its path.
+async function installStatuslineFiles($: EngineInterface): Promise<string> {
+  const dir = await statePath($, 'statusline')
+  for (const file of STATUSLINE_FILES) {
+    await $.fs.write(`${dir}/${file}`, await $.fs.read(`${$.plugin.root}/scripts/${file}`))
+  }
+  return `${dir}/statusline.mjs`
+}
+
+type ClaudeSettings = { statusLine?: unknown; [key: string]: unknown }
+
+async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
+  const settingsPath = `${await claudeDir($)}/settings.json`
+  const settings = await readJson<ClaudeSettings>($, settingsPath, {})
+  const config = await readConfig($)
+  if (on) {
+    const script = await installStatuslineFiles($)
+    const ours = { type: 'command', command: `node "${script}"`, padding: 0, refreshInterval: 30 }
+    const current = JSON.stringify(settings.statusLine ?? null)
+    if (config.statusline !== true && !current.includes('tamaclaude')) {
+      await writeConfig($, { previousStatusLine: settings.statusLine ?? null })
+    }
+    settings.statusLine = ours
+    await writeConfig($, { statusline: true })
+  } else {
+    if (config.previousStatusLine) settings.statusLine = config.previousStatusLine
+    else delete settings.statusLine
+    await writeConfig($, { statusline: false, previousStatusLine: null })
+  }
+  await $.fs.write(settingsPath, JSON.stringify(settings, null, 2) + '\n')
+  return on
+    ? 'Powerline status line on: model, folder, branch, context, limits and time. /tamaclaude statusline off restores yours.'
+    : 'Status line restored.'
+}
+
 export const register: Register = on => {
   let mainTurn: string | null = null
   let lastPush = 0
@@ -353,10 +394,15 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await loadSession($)
+    if ((await readConfig($)).statusline === true) {
+      try {
+        await installStatuslineFiles($)
+      } catch {}
+    }
     await $.command.register({
       name: 'tamaclaude',
       description: 'Token usage charts, palettes and your monster',
-      argumentHint: '[stats | palette [name] | theme on|off | pet on|off | icon [name] | reroll]',
+      argumentHint: '[stats | palette [name] | theme on|off | statusline on|off | pet on|off | reroll]',
     })
     return started
   })
@@ -649,7 +695,7 @@ export const register: Register = on => {
         {hourChart}
         <Text color={p.muted}>{hourLabels}</Text>
         <Text> </Text>
-        <Text color={p.muted}>/tamaclaude palette · theme on|off · pet on|off · reroll</Text>
+        <Text color={p.muted}>/tamaclaude palette · theme · statusline · pet · reroll</Text>
       </Box>
     )
   })
@@ -737,6 +783,11 @@ export const register: Register = on => {
       return { text: `Say hi to ${pet.name} the ${pet.icon}!` }
     }
 
+    if (sub === 'statusline') {
+      if (arg !== 'on' && arg !== 'off') return { text: 'Usage: /tamaclaude statusline on|off' }
+      return { text: await setStatusline($, arg === 'on') }
+    }
+
     if (sub === 'pet') {
       const visible = arg !== 'off'
       await $.store.set('showPet', visible)
@@ -755,7 +806,7 @@ export const register: Register = on => {
       return { text: `Sidebar icons: ${arg}.` }
     }
 
-    return { text: 'Usage: /tamaclaude [stats | palette [name] | theme on|off | pet on|off | icon [name] | icons nerd|emoji | reroll]' }
+    return { text: 'Usage: /tamaclaude [stats | palette [name] | theme on|off | statusline on|off | pet on|off | icon [name] | icons nerd|emoji | reroll]' }
   })
 }
 
