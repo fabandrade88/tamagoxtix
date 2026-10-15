@@ -13,6 +13,7 @@ const targets = {
   "icons.mjs": ["herdr/src/lib", "claude/hooks/lib"],
   "scenes.mjs": ["herdr/src/lib", "claude/hooks/lib"],
   "scenes-more.mjs": ["herdr/src/lib", "claude/hooks/lib"],
+  "forge.mjs": ["herdr/src/lib", "claude/hooks/lib"],
   "usage-node.mjs": ["herdr/src/lib", "claude/scripts"],
 };
 const check = process.argv.includes("--check");

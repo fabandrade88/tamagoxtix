@@ -57,6 +57,43 @@ describe('tamaclaude', () => {
     await ui.unmount()
   })
 
+  test('/tamaclaude prints a usage card from the numbers on disk', async ($, on) => {
+    const day = (date: string, tokens: number) => ({ date, tokens, output: tokens / 100 })
+    const usage = {
+      generatedAt: 0,
+      days: Array.from({ length: 14 }, (_, i) => day(`2026-10-${String(i + 1).padStart(2, '0')}`, i * 1e6)),
+      today: { date: '2026-10-14', tokens: 13e6, output: 130e3, hours: Array.from({ length: 24 }, (_, hour) => ({ hour, tokens: hour * 1e5 })) },
+      session: { start: 0, end: 0, tokens: 5e6 },
+      week: { start: 0, tokens: 40e6 },
+    }
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    on('process.run', ($, e) =>
+      e.argv.some(a => a.endsWith('usage-node.mjs'))
+        ? { value: { exitCode: 0, stdout: JSON.stringify(usage), stderr: '' } }
+        : { value: { exitCode: 1, stdout: '', stderr: '' } },
+    )
+    await $.session.start(START)
+    const result = await $.command.run({
+      command: 'tamaclaude',
+      args: '',
+      origin: { kind: 'composer' },
+      presentation: { isFullscreen: false, columns: 100 },
+    })
+    expect(result.text).toContain('today 13M')
+    const ui = await $.ui.mount({
+      plugin: 'tamaclaude',
+      surface: 'terminal',
+      component: 'CommandOutput',
+      props: { command: 'tamaclaude', args: '', text: result.text ?? '', isErrored: false } as never,
+    })
+    expect(await ui.find({ type: 'Text', text: /last 14 days/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /today by hour/ })).toBeDefined()
+    await ui.unmount()
+  })
+
   test('/tamaclaude palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })

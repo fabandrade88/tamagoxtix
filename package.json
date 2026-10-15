@@ -7,7 +7,10 @@
   "scripts": {
     "sync": "node scripts/sync-shared.mjs",
     "check": "node scripts/sync-shared.mjs --check && claude plugin validate claude && herdr config check",
-    "test": "node scripts/sync-shared.mjs --check && node --test tests/*.test.mjs && claude plugin test claude"
+    "test": "node scripts/sync-shared.mjs --check && node --test tests/*.test.mjs && claude plugin test claude && node scripts/security-check.mjs && node scripts/bench.mjs",
+    "test:unit": "node --test tests/*.test.mjs && claude plugin test claude",
+    "test:security": "node scripts/security-check.mjs",
+    "test:perf": "node scripts/bench.mjs"
   },
   "engines": {
     "node": ">=18"

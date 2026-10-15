@@ -1,6 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
+import { clean, parseRemote } from './lib/forge.mjs'
 import { DEFAULT_ICON, iconByName, iconFor, ICONS, iconToken } from './lib/icons.mjs'
 import { makeMonster, slotColor, spriteRuns } from './lib/monsters.mjs'
 import {
@@ -133,17 +134,6 @@ async function run($: EngineInterface, argv: string[]): Promise<string | null> {
   }
 }
 
-// The forge a remote lives on: github.com, or GitLab (gitlab.com or a
-// self-hosted instance whose host names it), with the project's path.
-function parseRemote(remote: string | null): { forge: 'github' | 'gitlab'; host: string; path: string } | null {
-  const m = remote?.match(/^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)(?::\d+(?=\/))?[:/](.+?)(?:\.git)?\/?$/)
-  if (!m) return null
-  const [, host = '', path = ''] = m
-  if (host === 'github.com') return { forge: 'github', host, path }
-  if (/gitlab/i.test(host)) return { forge: 'gitlab', host, path }
-  return null
-}
-
 type Remote = Pick<TamaGithub, 'issues' | 'prs' | 'stars' | 'ci'>
 
 async function fetchGithub($: EngineInterface, path: string, branch: string): Promise<Remote> {
@@ -233,12 +223,12 @@ async function refreshGithub($: EngineInterface) {
   }
   const local = {
     forge: parsed.forge,
-    repo,
-    branch,
+    repo: clean(repo),
+    branch: clean(branch, 40),
     dirty: status ? status.split('\n').length : 0,
     ahead: ahead || 0,
     behind: behind || 0,
-    version,
+    version: version ? clean(version, 24) : null,
   }
 
   const previous = await read($, github)
