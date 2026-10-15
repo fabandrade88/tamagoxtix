@@ -49,8 +49,9 @@ const p = palette();
 const cwd = input.workspace?.current_dir ?? input.cwd ?? process.cwd();
 const segments = [];
 
-segments.push({ text: `${GLYPH.model} ${clean(input.model?.display_name ?? "Claude", 24)}`, color: p.accent, bold: true });
-segments.push({ text: `${GLYPH.folder} ${clean(basename(cwd), 32)}`, color: p.blue });
+// the model leads in orange, the highlight of every palette
+segments.push({ text: `${GLYPH.model} ${clean(input.model?.display_name ?? "Claude", 24)}`, color: p.orange, bold: true });
+segments.push({ text: `${GLYPH.folder} ${clean(basename(cwd), 32)}`, color: p.accent });
 
 const branch = git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
 if (branch) {

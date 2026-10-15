@@ -58,11 +58,11 @@ function statusEntries() {
   return `[${[run("git", 5), run("tokens", 60), run("limits", 30), '{ type = "zoom" }', '{ type = "datetime", format = "\\uf017 %H:%M" }'].join(", ")}]`;
 }
 
-// herdr's default sidebar rows, colored from the palette.
+// herdr's default sidebar rows, colored from the palette, Spaces in orange.
 function sidebarTables(p) {
   return [
     "[ui.sidebar.spaces]",
-    `rows = [["state_icon", { token = "workspace", fg = ${toml(p.accent)}, bold = true }], [{ token = "branch", fg = ${toml(p.magenta)} }, "git_status"]]`,
+    `rows = [["state_icon", { token = "workspace", fg = ${toml(p.orange)}, bold = true }], [{ token = "branch", fg = ${toml(p.magenta)} }, "git_status"]]`,
     "",
     "[ui.sidebar.agents]",
     `rows = [["state_icon", { token = "workspace", fg = ${toml(p.blue)} }, { token = "tab", fg = ${toml(p.muted)} }], [{ token = "agent", fg = ${toml(p.accent)}, bold = true }, { token = "state_text", fg = ${toml(p.muted)} }]]`,

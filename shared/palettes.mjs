@@ -89,6 +89,9 @@ export const PALETTES = {
 
 export const DEFAULT_PALETTE = "claude";
 
+// The orange used where a theme has none: Claude's, a touch warmer.
+export const HIGHLIGHT_ORANGE = "#e8875b";
+
 // ---- Omarchy ----
 
 // Omarchy themes ship colors.toml in one of two shapes: named slots
@@ -109,7 +112,8 @@ export function parseColorsToml(text) {
     muted: raw.muted ?? raw.dark_foreground ?? c(8),
     accent: raw.accent ?? c(4),
     red: raw.red ?? c(1),
-    orange: raw.orange ?? raw.bright_yellow ?? c(3),
+    // a theme without its own orange still gets one, for highlights
+    orange: raw.orange ?? HIGHLIGHT_ORANGE,
     yellow: raw.yellow ?? c(3) ?? c(11),
     green: raw.green ?? c(2),
     cyan: raw.cyan ?? c(6),

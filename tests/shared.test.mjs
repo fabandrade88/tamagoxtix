@@ -56,6 +56,16 @@ test("Omarchy colors.toml parses in both shapes", () => {
   for (const slot of SLOTS) assert.match(ansi[slot], /^#[0-9a-f]{6}$/);
 });
 
+test("every palette has an orange to highlight with, Omarchy themes without one too", async () => {
+  const { HIGHLIGHT_ORANGE, hexToRgb } = await import("../shared/palettes.mjs");
+  const ansiOnly = parseColorsToml('foreground = "#ffffff"\nbackground = "#070506"\ncolor3 = "#e095b5"\n');
+  assert.equal(ansiOnly.orange, HIGHLIGHT_ORANGE);
+  for (const [id, p] of Object.entries(PALETTES)) {
+    const [r, g, b] = hexToRgb(p.orange);
+    assert.ok(r > g && g >= b, `${id}: ${p.orange} reads as orange`);
+  }
+});
+
 test("every palette fills every slot", () => {
   for (const [id, p] of Object.entries(PALETTES)) {
     for (const slot of SLOTS) assert.match(p[slot], /^#[0-9a-f]{6}$/, `${id}.${slot}`);
