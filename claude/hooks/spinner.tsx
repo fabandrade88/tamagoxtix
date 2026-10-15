@@ -90,34 +90,34 @@ const Spinner: ClientModule<SpinnerProps, State> = (props, surface: ClientSurfac
     <Box flexDirection="row" gap={GAP} marginTop={1}>
       <Box flexDirection="column">{sprite}</Box>
       <Box flexDirection="column">
-        <Text>
-          <Text color={palette.accent} bold>
+        <Text mono>
+          <Text mono color={palette.accent} bold>
             {props.word}
           </Text>
-          <Text color={palette.accent}>{dots}</Text>
-          <Text color={palette.muted}> {monster.name} {label}</Text>
+          <Text mono color={palette.accent}>{dots}</Text>
+          <Text mono color={palette.muted}> {monster.name} {label}</Text>
         </Text>
-        <Text>
-          <Text color={palette.cyan}>{CLOCK[seconds % 4]} </Text>
-          <Text color={palette.fg} bold>
+        <Text mono>
+          <Text mono color={palette.cyan}>{CLOCK[seconds % 4]} </Text>
+          <Text mono color={palette.fg} bold>
             {timeLabel.padEnd(width)}
           </Text>
-          <Text> </Text>
-          <Text color={palette.cyan}>{time.bar}</Text>
-          <Text color={palette.cyan}> {marks('●', time.laps)}</Text>
+          <Text mono> </Text>
+          <Text mono color={palette.cyan}>{time.bar}</Text>
+          <Text mono color={palette.cyan}> {marks('●', time.laps)}</Text>
         </Text>
-        <Text>
-          <Text color={palette.yellow} bold>
+        <Text mono>
+          <Text mono color={palette.yellow} bold>
             {'$ '}
             {moneyLabel.padEnd(width)}
           </Text>
-          <Text> </Text>
-          <Text color={palette.yellow}>{money.bar}</Text>
-          <Text color={palette.yellow} bold>
+          <Text mono> </Text>
+          <Text mono color={palette.yellow}>{money.bar}</Text>
+          <Text mono color={palette.yellow} bold>
             {' '}
             {marks('$', money.laps)}
           </Text>
-          <Text color={palette.muted}>{money.laps > 0 ? ' · ' : ''}tokens · esc to interrupt</Text>
+          <Text mono color={palette.muted}>{money.laps > 0 ? ' · ' : ''}tokens · esc to interrupt</Text>
         </Text>
       </Box>
     </Box>

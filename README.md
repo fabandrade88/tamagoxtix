@@ -115,6 +115,15 @@ than filled segments. `tamaclaude.theme-uninstall` restores your config exactly.
 
 ![herdr usage popup](docs/screenshots/herdr-stats.png)
 
+## Where it works
+
+| | |
+| --- | --- |
+| Claude Code in a terminal (and inside herdr) | everything |
+| Claude Code desktop app (local sessions) | the monster, the idle band and the cards; no status line (the app doesn't show one) |
+| VS Code / JetBrains extensions | the `/tamaclaude` commands as text |
+| claude.ai (web, mobile) | not supported: mods run in Claude Code only |
+
 ## Install
 
 **Requirements:** [Node.js](https://nodejs.org) 18+, Claude Code 2.1.300+ for the
@@ -228,6 +237,7 @@ Screenshots are real captures (`herdr pane read --ansi`) rendered with
 ### 1.1.0
 
 - `/tamaclaude help`: every command, grouped, with what is on.
+- The monster, the idle band and the cards in the Claude Code desktop app too.
 - Powerline status line (`/tamaclaude statusline on`) and an orange highlight
   in every palette.
 - The tamaclaude look for herdr: palette colors, a tab-bar status area with

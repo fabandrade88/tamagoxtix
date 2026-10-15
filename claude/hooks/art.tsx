@@ -1,4 +1,5 @@
-// Draws a scene (scenes.mjs) as Text rows: the pixels as half blocks in the
+// Draws a scene (scenes.mjs) as Text rows (monospaced, so the desktop app lines
+// them up as a terminal does): the pixels as half blocks in the
 // monster's palette colors, then the effects column.
 import type { ClientElements } from 'claude-code'
 
@@ -11,13 +12,13 @@ export type SceneData = { rows: Run[][]; fx: string[]; fxSlot: string; caption: 
 export function sceneRows(Text: ClientElements['Text'], monster: TamaMonster, palette: TamaPalette, data: SceneData) {
   const color = (slot?: string) => (slot ? slotColor(monster, slot, palette) : undefined)
   return data.rows.map((runs, i) => (
-    <Text>
+    <Text mono>
       {runs.map(run => (
-        <Text color={color(run.fg)} backgroundColor={color(run.bg)}>
+        <Text mono color={color(run.fg)} backgroundColor={color(run.bg)}>
           {run.text}
         </Text>
       ))}
-      <Text color={color(data.fxSlot)}>{' ' + (data.fx[i] ?? '')}</Text>
+      <Text mono color={color(data.fxSlot)}>{' ' + (data.fx[i] ?? '')}</Text>
     </Text>
   ))
 }

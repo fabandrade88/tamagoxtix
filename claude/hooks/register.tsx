@@ -597,7 +597,7 @@ export const register: Register = on => {
   // ---- the spinner ----
 
   on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
-    if (e.surface !== 'terminal') return next(e)
+    if ((e.surface !== 'terminal' && e.surface !== 'desktop')) return next(e)
     const [pal, pet, current] = [await read($, palette), await read($, monster), await read($, turn)]
     if (!pal || !pet) return next(e)
     const { Client } = $.ui.resolve(e)
@@ -620,7 +620,7 @@ export const register: Register = on => {
   // ---- the idle band: the monster lives above the prompt between turns ----
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.surface !== 'terminal' || e.props.hasSurvey || e.props.isWorking || e.props.maxRows < 3) return next(e)
+    if ((e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.hasSurvey || e.props.isWorking || e.props.maxRows < 3) return next(e)
     const [pal, pet, show, since, data, windows, repo] = [
       await read($, palette),
       await read($, monster),
@@ -655,31 +655,31 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'CommandOutput', props: { command: 'tamaclaude' } }, async ($, e, next) => {
     const sub = e.props.args.trim().split(/\s+/)[0] ?? ''
-    if (sub !== 'help' || e.surface !== 'terminal' || e.props.isErrored) return next(e)
+    if (sub !== 'help' || (e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.isErrored) return next(e)
     const { Box, Text } = $.ui.resolve(e)
     const p = (await read($, palette)) ?? (resolvePalette('claude') as TamaPalette)
     const sections = await helpSections($)
     const width = Math.max(60, Math.min(96, (e.viewport?.columns ?? 100) - 4))
     return (
       <Box flexDirection="column" borderStyle="round" borderColor={p.muted} paddingX={2} width={width}>
-        <Text>
-          <Text color={p.orange} bold>
+        <Text mono>
+          <Text mono color={p.orange} bold>
             tamaclaude
           </Text>
-          <Text color={p.muted}>  ·  help</Text>
+          <Text mono color={p.muted}>  ·  help</Text>
         </Text>
         {sections.map(section => (
           <Box flexDirection="column" marginTop={1}>
-            <Text>
-              <Text color={p.orange}>▍</Text>
-              <Text color={p.fg} bold>{` ${section.title}`}</Text>
+            <Text mono>
+              <Text mono color={p.orange}>▍</Text>
+              <Text mono color={p.fg} bold>{` ${section.title}`}</Text>
             </Text>
             {section.rows.map(row => (
-              <Text>
-                <Text color={p.accent}>{`  ${row.command.padEnd(36)}`}</Text>
-                <Text color={p.muted}>{row.does}</Text>
+              <Text mono>
+                <Text mono color={p.accent}>{`  ${row.command.padEnd(36)}`}</Text>
+                <Text mono color={p.muted}>{row.does}</Text>
                 {row.state !== undefined && (
-                  <Text color={row.state ? p.green : p.muted} bold={row.state}>
+                  <Text mono color={row.state ? p.green : p.muted} bold={row.state}>
                     {row.state ? '  ● on' : '  ○ off'}
                   </Text>
                 )}
@@ -695,7 +695,7 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'CommandOutput', props: { command: 'tamaclaude' } }, async ($, e, next) => {
     const sub = e.props.args.trim().split(/\s+/)[0] || 'stats'
-    if (sub !== 'stats' || e.surface !== 'terminal' || e.props.isErrored) return next(e)
+    if (sub !== 'stats' || (e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.isErrored) return next(e)
     const { Box, Text } = $.ui.resolve(e)
     const [pal, pet, data, windows] = [
       await read($, palette),
@@ -708,9 +708,9 @@ export const register: Register = on => {
     const width = Math.max(60, Math.min(78, (e.viewport?.columns ?? 100) - 4))
 
     const title = (text: string) => (
-      <Text>
-        <Text color={p.accent}>▍</Text>
-        <Text color={p.fg} bold>
+      <Text mono>
+        <Text mono color={p.accent}>▍</Text>
+        <Text mono color={p.fg} bold>
           {` ${text}`}
         </Text>
       </Text>
@@ -718,7 +718,7 @@ export const register: Register = on => {
 
     const sprite = pet
       ? spriteRuns(pet, 'idle', 0).map(runs => (
-          <Text>
+          <Text mono>
             {runs.map(run => (
               <Text
                 color={run.fg ? slotColor(pet, run.fg, p) : undefined}
@@ -738,14 +738,14 @@ export const register: Register = on => {
       const [full, empty] = meter(pct / 100, 24)
       const reset = resetIn(l?.resetsAt)
       return (
-        <Text>
-          <Text color={p.fg}>{label.padEnd(8)}</Text>
-          <Text color={color}>{full}</Text>
-          <Text color={p.muted}>{empty}</Text>
-          <Text color={color} bold>
+        <Text mono>
+          <Text mono color={p.fg}>{label.padEnd(8)}</Text>
+          <Text mono color={color}>{full}</Text>
+          <Text mono color={p.muted}>{empty}</Text>
+          <Text mono color={color} bold>
             {l ? ` ${String(Math.round(pct)).padStart(3)}%` : '   —'}
           </Text>
-          <Text color={p.muted}>{reset ? `   ⟳ ${reset}` : l ? '' : '   no reading yet'}</Text>
+          <Text mono color={p.muted}>{reset ? `   ⟳ ${reset}` : l ? '' : '   no reading yet'}</Text>
         </Text>
       )
     }
@@ -754,9 +754,9 @@ export const register: Register = on => {
     const days = data.days
     const dayRows = columnRows(days.map(d => d.tokens), 5)
     const dayChart = dayRows.map(row => (
-      <Text>
+      <Text mono>
         {row.map((ch, i) => (
-          <Text color={i === row.length - 1 ? p.accent : p.blue}>{ch.repeat(3) + ' '}</Text>
+          <Text mono color={i === row.length - 1 ? p.accent : p.blue}>{ch.repeat(3) + ' '}</Text>
         ))}
       </Text>
     ))
@@ -766,9 +766,9 @@ export const register: Register = on => {
     const hourNow = new Date().getHours()
     const hourRows = columnRows(data.today.hours.map(h => h.tokens), 3)
     const hourChart = hourRows.map(row => (
-      <Text>
+      <Text mono>
         {row.map((ch, i) => (
-          <Text color={i === hourNow ? p.accent : p.green}>{ch.repeat(2) + ' '}</Text>
+          <Text mono color={i === hourNow ? p.accent : p.green}>{ch.repeat(2) + ' '}</Text>
         ))}
       </Text>
     ))
@@ -779,46 +779,46 @@ export const register: Register = on => {
         <Box flexDirection="row" gap={3}>
           <Box flexDirection="column">{sprite}</Box>
           <Box flexDirection="column">
-            <Text>
-              <Text color={p.accent} bold>
+            <Text mono>
+              <Text mono color={p.accent} bold>
                 {pet?.name ?? 'tamaclaude'}
               </Text>
-              <Text color={p.muted}>{`  ·  token usage  ·  ${p.label}`}</Text>
+              <Text mono color={p.muted}>{`  ·  token usage  ·  ${p.label}`}</Text>
             </Text>
-            <Text>
-              <Text color={p.muted}>today </Text>
-              <Text color={p.yellow} bold>
+            <Text mono>
+              <Text mono color={p.muted}>today </Text>
+              <Text mono color={p.yellow} bold>
                 {formatTokens(data.today.tokens)}
               </Text>
-              <Text color={p.muted}>{`   session `}</Text>
-              <Text color={p.cyan} bold>
+              <Text mono color={p.muted}>{`   session `}</Text>
+              <Text mono color={p.cyan} bold>
                 {formatTokens(data.session?.tokens ?? 0)}
               </Text>
-              <Text color={p.muted}>{`   week `}</Text>
-              <Text color={p.magenta} bold>
+              <Text mono color={p.muted}>{`   week `}</Text>
+              <Text mono color={p.magenta} bold>
                 {formatTokens(data.week.tokens)}
               </Text>
             </Text>
-            <Text color={p.muted}>{`${formatTokens(data.today.output)} written by Claude today`}</Text>
+            <Text mono color={p.muted}>{`${formatTokens(data.today.output)} written by Claude today`}</Text>
           </Box>
         </Box>
-        <Text> </Text>
+        <Text mono> </Text>
         {title('limits')}
         {limitRow('5h', 'five_hour')}
         {limitRow('week', 'seven_day')}
-        <Text> </Text>
-        <Text>
+        <Text mono> </Text>
+        <Text mono>
           {title('last 14 days')}
-          <Text color={p.muted}>{`   max ${formatTokens(Math.max(...days.map(d => d.tokens)))}`}</Text>
+          <Text mono color={p.muted}>{`   max ${formatTokens(Math.max(...days.map(d => d.tokens)))}`}</Text>
         </Text>
         {dayChart}
-        <Text color={p.muted}>{dayLabels}</Text>
-        <Text> </Text>
+        <Text mono color={p.muted}>{dayLabels}</Text>
+        <Text mono> </Text>
         {title('today by hour')}
         {hourChart}
-        <Text color={p.muted}>{hourLabels}</Text>
-        <Text> </Text>
-        <Text color={p.muted}>/tamaclaude help for all the commands</Text>
+        <Text mono color={p.muted}>{hourLabels}</Text>
+        <Text mono> </Text>
+        <Text mono color={p.muted}>/tamaclaude help for all the commands</Text>
       </Box>
     )
   })

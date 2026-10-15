@@ -119,6 +119,42 @@ describe('tamaclaude', () => {
     await ui.unmount()
   })
 
+  test('the desktop app draws the spinner, the idle band and the cards too', async ($, on) => {
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    await $.session.start(START)
+
+    const drawn = await $.ui.render({ surface: 'desktop', component: 'Spinner', requestId: 'main', props: SPINNER })
+    expect(JSON.stringify(drawn)).toContain('spinner.tsx')
+
+    const spinner = await $.ui.mount({ plugin: 'tamaclaude', surface: 'desktop', component: 'Spinner', props: { ...SPINNER, mode: 'tool-use' } })
+    for (let i = 0; i < 6; i++) await spinner.advance(160)
+    expect(await spinner.find({ in: 'tamaclaude-spinner', type: 'Text', text: /esc to interrupt/ })).toBeDefined()
+    await spinner.unmount()
+
+    const band = await $.ui.mount({
+      plugin: 'tamaclaude',
+      surface: 'desktop',
+      component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100 } as never,
+    })
+    for (let i = 0; i < 20; i++) await band.advance(320)
+    expect(await band.find({ in: 'tamaclaude-idle', type: 'Text', text: /waiting for you/ })).toBeDefined()
+    await band.unmount()
+
+    const help = await $.command.run({ command: 'tamaclaude', args: 'help', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+    const card = await $.ui.mount({
+      plugin: 'tamaclaude',
+      surface: 'desktop',
+      component: 'CommandOutput',
+      props: { command: 'tamaclaude', args: 'help', text: help.text ?? '', isErrored: false } as never,
+    })
+    expect(await card.find({ type: 'Text', text: /statusline on\|off/ })).toBeDefined()
+    await card.unmount()
+  })
+
   test('/tamaclaude palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })

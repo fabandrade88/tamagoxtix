@@ -84,42 +84,42 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
     const l = props.limits.find(w => w.kind === kind)
     if (!l) {
       return (
-        <Text>
-          <Text color={palette.fg}>{label.padEnd(6)}</Text>
-          <Text color={palette.muted}>{'▱'.repeat(BAR_CELLS)} no reading yet</Text>
+        <Text mono>
+          <Text mono color={palette.fg}>{label.padEnd(6)}</Text>
+          <Text mono color={palette.muted}>{'▱'.repeat(BAR_CELLS)} no reading yet</Text>
         </Text>
       )
     }
     const color = l.percentUsed >= 90 ? palette.red : l.percentUsed >= 70 ? palette.orange : palette.cyan
     const reset = resetIn(l.resetsAt, now)
     return (
-      <Text>
-        <Text color={palette.fg}>{label.padEnd(6)}</Text>
-        <Text color={color}>{bar(l.percentUsed)}</Text>
-        <Text color={color} bold>{` ${String(Math.round(l.percentUsed)).padStart(3)}%`}</Text>
-        {reset ? <Text color={palette.muted}>{`  ⟳ ${reset}`}</Text> : null}
+      <Text mono>
+        <Text mono color={palette.fg}>{label.padEnd(6)}</Text>
+        <Text mono color={color}>{bar(l.percentUsed)}</Text>
+        <Text mono color={color} bold>{` ${String(Math.round(l.percentUsed)).padStart(3)}%`}</Text>
+        {reset ? <Text mono color={palette.muted}>{`  ⟳ ${reset}`}</Text> : null}
       </Text>
     )
   }
   const max = Math.max(1, ...props.week.map(d => d.tokens))
   const weekRow = (
-    <Text>
-      <Text color={palette.fg}>{'days'.padEnd(6)}</Text>
+    <Text mono>
+      <Text mono color={palette.fg}>{'days'.padEnd(6)}</Text>
       {props.week.map(d => {
         const level = d.isFuture ? ' ' : (LEVELS[d.tokens ? Math.max(1, Math.round((d.tokens / max) * 8)) : 0] ?? '·')
         return (
-          <Text>
-            <Text color={d.isToday ? palette.accent : palette.muted} bold={d.isToday}>
+          <Text mono>
+            <Text mono color={d.isToday ? palette.accent : palette.muted} bold={d.isToday}>
               {d.label}
             </Text>
-            <Text color={d.isToday ? palette.accent : palette.yellow}>{level} </Text>
+            <Text mono color={d.isToday ? palette.accent : palette.yellow}>{level} </Text>
           </Text>
         )
       })}
     </Text>
   )
   const separator = () => (
-    <Box flexDirection="column">{['│', '│', '│'].map(line => <Text color={palette.muted}>{line}</Text>)}</Box>
+    <Box flexDirection="column">{['│', '│', '│'].map(line => <Text mono color={palette.muted}>{line}</Text>)}</Box>
   )
   const showUsage = props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage
   const showGithub = props.github !== null && props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage + WIDTH.github
@@ -133,7 +133,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
     <Box flexDirection="row" gap={2}>
       <Box flexDirection="column">
         {(g.forge === 'gitlab' ? gitlabFox(frame) : octocat(frame, 'fg')).map(runs => (
-          <Text>
+          <Text mono>
             {runs.map(run => (
               <Text
                 color={run.fg ? (palette as Record<string, string>)[run.fg] ?? palette.fg : undefined}
@@ -146,27 +146,27 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
         ))}
       </Box>
       <Box flexDirection="column">
-        <Text>
-          <Text color={palette.fg} bold>
+        <Text mono>
+          <Text mono color={palette.fg} bold>
             {g.repo}
           </Text>
-          {g.stars !== null && <Text color={palette.yellow}>{`  ${icon.star} ${g.stars}`}</Text>}
+          {g.stars !== null && <Text mono color={palette.yellow}>{`  ${icon.star} ${g.stars}`}</Text>}
           {g.ci && (
-            <Text color={g.ci === 'success' ? palette.green : g.ci === 'failure' ? palette.red : palette.yellow}>
+            <Text mono color={g.ci === 'success' ? palette.green : g.ci === 'failure' ? palette.red : palette.yellow}>
               {`  ${g.ci === 'success' ? icon.ok : g.ci === 'failure' ? icon.fail : icon.pending} ci`}
             </Text>
           )}
         </Text>
-        <Text>
-          <Text color={palette.magenta}>{`${icon.branch} ${g.branch}`}</Text>
-          {g.ahead > 0 && <Text color={palette.green}>{` ↑${g.ahead}`}</Text>}
-          {g.behind > 0 && <Text color={palette.orange}>{` ↓${g.behind}`}</Text>}
-          {g.dirty > 0 && <Text color={palette.yellow}>{` ●${g.dirty}`}</Text>}
+        <Text mono>
+          <Text mono color={palette.magenta}>{`${icon.branch} ${g.branch}`}</Text>
+          {g.ahead > 0 && <Text mono color={palette.green}>{` ↑${g.ahead}`}</Text>}
+          {g.behind > 0 && <Text mono color={palette.orange}>{` ↓${g.behind}`}</Text>}
+          {g.dirty > 0 && <Text mono color={palette.yellow}>{` ●${g.dirty}`}</Text>}
         </Text>
-        <Text>
-          {g.version && <Text color={palette.cyan}>{`${icon.tag} ${g.version}  `}</Text>}
-          {g.issues !== null && <Text color={palette.green}>{`${icon.issue} ${g.issues}  `}</Text>}
-          {g.prs !== null && <Text color={palette.blue}>{`${icon.pr} ${g.prs}`}</Text>}
+        <Text mono>
+          {g.version && <Text mono color={palette.cyan}>{`${icon.tag} ${g.version}  `}</Text>}
+          {g.issues !== null && <Text mono color={palette.green}>{`${icon.issue} ${g.issues}  `}</Text>}
+          {g.prs !== null && <Text mono color={palette.blue}>{`${icon.pr} ${g.prs}`}</Text>}
         </Text>
       </Box>
     </Box>
@@ -176,21 +176,21 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
     <Box flexDirection="row" gap={3} marginTop={1}>
       <Box flexDirection="column">{sceneRows(Text, monster, palette, data)}</Box>
       <Box flexDirection="column">
-        <Text>
-          <Text color={palette.accent} bold>
+        <Text mono>
+          <Text mono color={palette.accent} bold>
             {monster.name}
           </Text>
-          <Text color={palette.fg}> {data.caption}</Text>
+          <Text mono color={palette.fg}> {data.caption}</Text>
         </Text>
-        <Text color={palette.muted}>waiting for you · idle {formatIdle(now - props.idleSince)}</Text>
-        <Text>
+        <Text mono color={palette.muted}>waiting for you · idle {formatIdle(now - props.idleSince)}</Text>
+        <Text mono>
           {props.todayTokens !== null && (
-            <Text>
-              <Text color={palette.yellow}>$ {formatTokens(props.todayTokens)}</Text>
-              <Text color={palette.muted}> tokens today · </Text>
+            <Text mono>
+              <Text mono color={palette.yellow}>$ {formatTokens(props.todayTokens)}</Text>
+              <Text mono color={palette.muted}> tokens today · </Text>
             </Text>
           )}
-          <Text color={palette.muted}>/tamaclaude for stats</Text>
+          <Text mono color={palette.muted}>/tamaclaude for stats</Text>
         </Text>
       </Box>
       {showUsage && separator()}
