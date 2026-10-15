@@ -119,3 +119,18 @@ test("following herdr's theme writes no colors at all", async () => {
   assert.match(themed, /^accent = "blue"$/m, "the person's accent stays");
   assert.equal(strip(themed).replace(/\n*$/, "\n"), original);
 });
+
+test("switching palettes writes the chat theme file only where the chat uses it", async () => {
+  const { existsSync, rmSync } = await import("node:fs");
+  process.env.CLAUDE_CONFIG_DIR = join(root, "claude-theme");
+  mkdirSync(join(root, "claude-theme"), { recursive: true });
+  const themeFile = join(root, "claude-theme", "themes", "tamaclaude.json");
+  const { applyPalette } = await import("../herdr/src/palette.mjs");
+  writeFileSync(join(root, "claude-theme", "settings.json"), JSON.stringify({ theme: "dark" }));
+  applyPalette("nord");
+  assert.equal(existsSync(themeFile), false, "not written while the chat uses another theme");
+  writeFileSync(join(root, "claude-theme", "settings.json"), JSON.stringify({ theme: "custom:tamaclaude" }));
+  applyPalette("nord");
+  assert.equal(existsSync(themeFile), true, "written once the chat uses it");
+  rmSync(themeFile);
+});

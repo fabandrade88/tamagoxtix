@@ -10,7 +10,7 @@
       "name": "tamaclaude",
       "source": "./claude",
       "description": "A little pixel monster in place of the spinner, a usage card, palettes and a powerline status line.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "productivity"
     }
   ]

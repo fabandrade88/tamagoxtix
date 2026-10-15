@@ -155,6 +155,63 @@ describe('tamaclaude', () => {
     await card.unmount()
   })
 
+  // an in-memory disk for the settings tests
+  function memoryFs(on: Parameters<Parameters<typeof test>[1]>[1], files: Map<string, string>) {
+    on('fs.exists', ($, e) => ({ value: files.has((e as { path: string }).path) }))
+    on('fs.read', ($, e) => {
+      const path = (e as { path: string }).path
+      if (files.has(path)) return { value: files.get(path) as string }
+      if (path.includes('/scripts/')) return { value: '// script' }
+      throw new Error(`ENOENT ${path}`)
+    })
+    on('fs.write', ($, e) => {
+      const { path, text } = e as { path: string; text: string }
+      files.set(path, text)
+      return { value: undefined }
+    })
+  }
+
+  test('a settings.json that is not valid JSON is never overwritten', async ($, on) => {
+    const files = new Map([['/home/me/.claude/settings.json', '{ "model": "opus", }']])
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/home/me' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    memoryFs(on, files)
+    await $.session.start(START)
+    for (const args of ['statusline on', 'theme on', 'statusline off', 'theme off']) {
+      const result = await $.command.run({ command: 'tamaclaude', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+      expect(result.text).toContain('not valid JSON')
+    }
+    expect(files.get('/home/me/.claude/settings.json')).toBe('{ "model": "opus", }')
+    expect(files.has('/home/me/.claude/settings.json.tamaclaude-backup')).toBe(false)
+  })
+
+  test('statusline and theme change their own keys, keep the rest, and back the file up once', async ($, on) => {
+    const original = JSON.stringify({ model: 'opus', permissions: { allow: ['Bash(ls)'] }, theme: 'dark' }, null, 2)
+    const files = new Map([['/home/me/.claude/settings.json', original]])
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/home/me' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamaclaude' } }))
+    memoryFs(on, files)
+    await $.session.start(START)
+    const run = (args: string) =>
+      $.command.run({ command: 'tamaclaude', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+    await run('statusline on')
+    await run('theme on')
+    let settings = JSON.parse(files.get('/home/me/.claude/settings.json') ?? '{}')
+    expect(settings.model).toBe('opus')
+    expect(settings.permissions).toEqual({ allow: ['Bash(ls)'] })
+    expect(settings.theme).toBe('custom:tamaclaude')
+    expect(String(settings.statusLine?.command)).toContain('statusline.mjs')
+    expect(files.get('/home/me/.claude/settings.json.tamaclaude-backup')).toBe(original)
+    await run('statusline off')
+    await run('theme off')
+    settings = JSON.parse(files.get('/home/me/.claude/settings.json') ?? '{}')
+    expect(settings).toEqual({ model: 'opus', permissions: { allow: ['Bash(ls)'] }, theme: 'dark' })
+  })
+
   test('/tamaclaude palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })

@@ -317,10 +317,10 @@ async function applyPalette($: EngineInterface, choice: string): Promise<TamaPal
   await writeConfig($, { palette: choice })
   const next = await loadPalette($, choice)
   await update($, palette, () => next)
-  await $.fs.write(
-    `${await claudeDir($)}/themes/tamaclaude.json`,
-    JSON.stringify(claudeTheme(next), null, 2) + '\n',
-  )
+  // the chat theme file is rewritten only where the chat uses it
+  if ((await readClaudeSettings($)).theme === 'custom:tamaclaude') {
+    await $.fs.write(`${await claudeDir($)}/themes/tamaclaude.json`, JSON.stringify(claudeTheme(next), null, 2) + '\n')
+  }
   if (await herdrPane($)) {
     try {
       await herdr($, ['plugin', 'action', 'invoke', 'tamaclaude.sidebar-refresh'])
@@ -362,28 +362,69 @@ async function installStatuslineFiles($: EngineInterface): Promise<string> {
 
 type ClaudeSettings = { statusLine?: unknown; theme?: unknown; [key: string]: unknown }
 
+// Changes Claude Code's own settings.json, carefully, since it holds
+// everything else the person configured:
+// - a file that is not valid JSON is left alone (never replaced by ours);
+// - the first change keeps a copy beside it (settings.json.tamaclaude-backup);
+// - only the keys `change` touches differ, and the result is read back: when
+//   it does not parse, the file the person had is put back.
+// Returns null on success, else why nothing was changed.
+async function editClaudeSettings($: EngineInterface, change: (s: ClaudeSettings) => void): Promise<string | null> {
+  const path = `${await claudeDir($)}/settings.json`
+  let original = ''
+  let settings: ClaudeSettings = {}
+  if (await $.fs.exists(path)) {
+    original = await $.fs.read(path)
+    if (original.trim()) {
+      try {
+        const parsed: unknown = JSON.parse(original)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object')
+        settings = parsed as ClaudeSettings
+      } catch {
+        return `${path} is not valid JSON, so tamaclaude left it alone. Fix it (or remove the broken part) and run the command again.`
+      }
+    }
+    const backup = `${path}.tamaclaude-backup`
+    if (original && !(await $.fs.exists(backup))) await $.fs.write(backup, original)
+  }
+  change(settings)
+  const text = JSON.stringify(settings, null, 2) + '\n'
+  await $.fs.write(path, text)
+  try {
+    JSON.parse(await $.fs.read(path))
+  } catch {
+    if (original) await $.fs.write(path, original)
+    return `Could not write ${path}; it was put back as it was.`
+  }
+  return null
+}
+
+async function readClaudeSettings($: EngineInterface): Promise<ClaudeSettings> {
+  return readJson<ClaudeSettings>($, `${await claudeDir($)}/settings.json`, {})
+}
+
 async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
-  const settingsPath = `${await claudeDir($)}/settings.json`
-  const settings = await readJson<ClaudeSettings>($, settingsPath, {})
   const config = await readConfig($)
+  const before = await readClaudeSettings($)
   if (on) {
     const script = await installStatuslineFiles($)
     const ours = { type: 'command', command: `node "${script}"`, padding: 0, refreshInterval: 30 }
-    const current = JSON.stringify(settings.statusLine ?? null)
-    if (config.statusline !== true && !current.includes('tamaclaude')) {
-      await writeConfig($, { previousStatusLine: settings.statusLine ?? null })
-    }
-    settings.statusLine = ours
-    await writeConfig($, { statusline: true })
-  } else {
-    if (config.previousStatusLine) settings.statusLine = config.previousStatusLine
-    else delete settings.statusLine
-    await writeConfig($, { statusline: false, previousStatusLine: null })
+    const current = JSON.stringify(before.statusLine ?? null)
+    const keepPrevious = config.statusline !== true && !current.includes('tamaclaude')
+    const refused = await editClaudeSettings($, s => {
+      s.statusLine = ours
+    })
+    if (refused) return refused
+    await writeConfig($, { statusline: true, ...(keepPrevious ? { previousStatusLine: before.statusLine ?? null } : {}) })
+    return 'Powerline status line on: model, folder, branch, context, limits and time. /tamaclaude statusline off restores yours.'
   }
-  await $.fs.write(settingsPath, JSON.stringify(settings, null, 2) + '\n')
-  return on
-    ? 'Powerline status line on: model, folder, branch, context, limits and time. /tamaclaude statusline off restores yours.'
-    : 'Status line restored.'
+  const refused = await editClaudeSettings($, s => {
+    if (config.previousStatusLine) s.statusLine = config.previousStatusLine
+    else delete s.statusLine
+  })
+  if (refused) return refused
+  await writeConfig($, { statusline: false, previousStatusLine: null })
+  return 'Status line restored.'
 }
 
 // ---- chat colors: a Claude Code custom theme from the palette ----
@@ -391,25 +432,26 @@ async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
 // /config takes only the built-in themes, so the theme is set in
 // settings.json the way Omarchy sets its own; Claude Code picks it up live.
 async function setChatTheme($: EngineInterface, on: boolean): Promise<string> {
-  const settingsPath = `${await claudeDir($)}/settings.json`
-  const settings = await readJson<ClaudeSettings>($, settingsPath, {})
   const pal = (await read($, palette)) ?? (await loadPalette($))
   if (on) {
+    const before = await readClaudeSettings($)
+    const current = typeof before.theme === 'string' ? before.theme : undefined
     await $.fs.write(`${await claudeDir($)}/themes/tamaclaude.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
-    const current = typeof settings.theme === 'string' ? settings.theme : undefined
-    if (current && current !== 'custom:tamaclaude') await writeConfig($, { previousTheme: current })
-    settings.theme = 'custom:tamaclaude'
-    await writeConfig($, { chatTheme: true })
-  } else {
-    const previous = (await readConfig($)).previousTheme
-    if (typeof previous === 'string' && previous) settings.theme = previous
-    else delete settings.theme
-    await writeConfig($, { chatTheme: false })
+    const refused = await editClaudeSettings($, s => {
+      s.theme = 'custom:tamaclaude'
+    })
+    if (refused) return refused
+    await writeConfig($, { chatTheme: true, ...(current && current !== 'custom:tamaclaude' ? { previousTheme: current } : {}) })
+    return `Chat colors follow the ${pal.label} palette. /tamaclaude theme off goes back.`
   }
-  await $.fs.write(settingsPath, JSON.stringify(settings, null, 2) + '\n')
-  return on
-    ? `Chat colors follow the ${pal.label} palette. /tamaclaude theme off goes back.`
-    : 'Chat colors back to your previous theme.'
+  const previous = (await readConfig($)).previousTheme
+  const refused = await editClaudeSettings($, s => {
+    if (typeof previous === 'string' && previous) s.theme = previous
+    else delete s.theme
+  })
+  if (refused) return refused
+  await writeConfig($, { chatTheme: false })
+  return 'Chat colors back to your previous theme.'
 }
 
 // ---- /tamaclaude help ----
@@ -419,7 +461,7 @@ type HelpSection = { title: string; rows: HelpRow[] }
 
 async function helpSections($: EngineInterface): Promise<HelpSection[]> {
   const config = await readConfig($)
-  const settings = await readJson<ClaudeSettings>($, `${await claudeDir($)}/settings.json`, {})
+  const settings = await readClaudeSettings($)
   const pal = (await read($, palette)) ?? (await loadPalette($))
   const chatTheme = settings.theme === 'custom:tamaclaude'
   const statusline = JSON.stringify(settings.statusLine ?? '').includes('tamaclaude')
@@ -454,6 +496,14 @@ async function helpSections($: EngineInterface): Promise<HelpSection[]> {
         { command: 'tamaclaude.theme-install|uninstall', does: 'the tamaclaude look for herdr', state: config.herdrTheme === true },
         { command: 'tamaclaude.theme-follow-herdr', does: "its colors from herdr's theme", state: config.herdrColors !== 'palette' },
         { command: 'tamaclaude.theme-follow-palette', does: 'its colors from the palette', state: config.herdrColors === 'palette' },
+      ],
+    },
+    {
+      title: 'before uninstalling',
+      rows: [
+        { command: '/tamaclaude statusline off', does: 'give the status line back' },
+        { command: '/tamaclaude theme off', does: 'give the chat theme back' },
+        { command: 'tamaclaude.theme-uninstall', does: "give herdr's look back (in herdr)" },
       ],
     },
   ]

@@ -42,6 +42,7 @@ const ALLOWED_WRITES = [
   /join\(stateDir\(\), "(usage-cache|limits|rerolls|icons)\.json"\)|rerollPath\(\)|picksPath\(\)|configPath\(\)|tmp|dest|path, (next|text|current|base)/,
   /join\(dir, "tamaclaude\.json"\)/,
   /OMARCHY_HOOK, HOOK_SCRIPT/,
+  /^backup, original\)/, // settings.json's one-time backup beside it
   /output|`\$\{path\}\.tamaclaude-backup`|`\$\{path\}\.tamaclaude-theme-backup`/,
   /`\$\{dir\}\/\$\{file\}`|settingsPath/,
   /join\(here, (["a-z-.]+|"lib", file)\)/,

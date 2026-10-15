@@ -205,8 +205,10 @@ At the prompt of a Claude Code session:
 
 or from a shell: `claude plugin install tamaclaude --marketplace fabandrade88/tamaclaude`.
 
-Update with `claude plugin update tamaclaude`. To remove it, first turn off what
-it set in your Claude Code settings:
+Update with `claude plugin update tamaclaude`. tamaclaude only touches Claude
+Code's `settings.json` when you turn the status line or the chat theme on or off,
+changes only those keys, and keeps a copy of the file the first time
+(`settings.json.tamaclaude-backup`). To remove it, first turn those off:
 
 ```
 /tamaclaude statusline off
@@ -258,6 +260,16 @@ folder. Screenshots are real captures (`herdr pane read --ansi`) rendered with
 `scripts/ansi-to-svg.mjs`; `scripts/gallery.mjs` draws the scene grids.
 
 ## Changelog
+
+### 1.1.1
+
+- Safer changes to Claude Code's `settings.json` (`statusline on|off`,
+  `theme on|off`): a file that isn't valid JSON is left alone instead of being
+  replaced, the first change keeps a copy (`settings.json.tamaclaude-backup`),
+  only tamaclaude's own keys change, and the result is read back and restored
+  if anything went wrong.
+- The chat theme file is written only while the chat uses it.
+- `/tamaclaude help` lists what to turn off before uninstalling.
 
 ### 1.1.0
 
