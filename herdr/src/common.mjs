@@ -35,7 +35,7 @@ export function herdrJson(args) {
 const configPath = () => join(configDir(), "config.json");
 
 export function readConfig() {
-  const defaults = { palette: "omarchy", icons: "nerd", sidebar: false };
+  const defaults = { palette: "beach", icons: "nerd", sidebar: false };
   try {
     return { ...defaults, ...JSON.parse(readFileSync(configPath(), "utf8")) };
   } catch {

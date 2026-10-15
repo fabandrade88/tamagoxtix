@@ -70,8 +70,8 @@ test("every palette fills every slot", () => {
   for (const [id, p] of Object.entries(PALETTES)) {
     for (const slot of SLOTS) assert.match(p[slot], /^#[0-9a-f]{6}$/, `${id}.${slot}`);
   }
-  assert.equal(resolvePalette("omarchy", undefined).id, "claude");
-  assert.equal(resolvePalette("nope").id, "claude");
+  assert.equal(resolvePalette("omarchy", undefined).id, "beach");
+  assert.equal(resolvePalette("nope").id, "beach");
 });
 
 test("the Claude Code theme is made of hex colors", () => {

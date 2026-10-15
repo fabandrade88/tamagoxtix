@@ -23,7 +23,7 @@ function readStdin() {
 
 function palette() {
   const configHome = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
-  let choice = "omarchy";
+  let choice = "beach";
   try {
     choice = JSON.parse(readFileSync(join(configHome, "tamaclaude", "config.json"), "utf8")).palette ?? choice;
   } catch {}

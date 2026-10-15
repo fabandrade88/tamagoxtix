@@ -34,11 +34,11 @@ test("the sidebar block is valid herdr config, for every palette and icon set", 
 
 test("config falls back to defaults and survives a broken file", async () => {
   const { readConfig, writeConfig } = await import("../herdr/src/common.mjs");
-  assert.equal(readConfig().palette, "omarchy");
+  assert.equal(readConfig().palette, "beach");
   assert.equal(readConfig().sidebar, false);
   mkdirSync(join(root, "config", "tamaclaude"), { recursive: true });
   writeFileSync(join(root, "config", "tamaclaude", "config.json"), "{ not json");
-  assert.equal(readConfig().palette, "omarchy");
+  assert.equal(readConfig().palette, "beach");
   writeConfig({ palette: "nord" });
   assert.equal(readConfig().palette, "nord");
 });

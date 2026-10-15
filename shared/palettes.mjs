@@ -8,12 +8,14 @@
 export const SLOTS = ["bg", "fg", "muted", "accent", "red", "orange", "yellow", "green", "cyan", "blue", "magenta"];
 
 export const PALETTES = {
-  claude: {
-    label: "Claude",
+  // tamaclaude's own: Omarchy's Beach theme, ocean dusk with terracotta,
+  // palm green, seafoam and bougainvillea
+  beach: {
+    label: "Beach",
     mode: "dark",
-    bg: "#1a1915", fg: "#e8e6dc", muted: "#6b6a63", accent: "#d97757",
-    red: "#e5484d", orange: "#d97757", yellow: "#e8b45a", green: "#7fb069",
-    cyan: "#6cb6c4", blue: "#7aa2f7", magenta: "#c58fdc",
+    bg: "#0d1f2b", fg: "#dfd8c8", muted: "#3d5b6e", accent: "#3f96d4",
+    red: "#e35d5b", orange: "#e8813f", yellow: "#f2c14e", green: "#7fbf6a",
+    cyan: "#5fd3c4", blue: "#4fa6e0", magenta: "#e84f9a",
   },
   "tokyo-night": {
     label: "Tokyo Night",
@@ -87,9 +89,9 @@ export const PALETTES = {
   },
 };
 
-export const DEFAULT_PALETTE = "claude";
+export const DEFAULT_PALETTE = "beach";
 
-// The orange used where a theme has none: Claude's, a touch warmer.
+// The orange used where a theme has none.
 export const HIGHLIGHT_ORANGE = "#e8875b";
 
 // ---- Omarchy ----

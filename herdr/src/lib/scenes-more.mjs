@@ -193,7 +193,14 @@ export const IDLE_MORE = {
     const p = t % 16;
     return { pose: p >= 12 ? "done" : "walk", ox: 1 + Math.min(Math.floor(p / 2), 5), props: [["finish", 18, 1]], fx: p >= 12 ? mid("win!") : BLANK, fxSlot: "yellow", caption: "is running a race" };
   },
-  jumprope: (t) => ({ pose: t % 2 ? "hop" : "idle", props: [["rope", 1, t % 2 ? 5 : 0]], fx: mid(String(1 + (Math.floor(t / 2) % 99))), fxSlot: "orange", caption: "is jumping rope" }),
+  // the rope swings over the head, then under the feet as it hops
+  jumprope: (t) => ({
+    pose: t % 2 ? "hop" : "idle",
+    props: [[t % 2 ? ["o..........o", ".oooooooooo."] : [".oooooooooo.", "o..........o"], 0, t % 2 ? 4 : 0, { slot: "orange" }]],
+    fx: mid(String(1 + (Math.floor(t / 2) % 99))),
+    fxSlot: "orange",
+    caption: "is jumping rope",
+  }),
   baseball: (t) => {
     const p = t % 10;
     return { pose: p === 5 ? "tool-use" : "idle", props: [["bat", 11, 1], [["f"], p < 5 ? 18 - p : 12 + p, p < 5 ? 2 : 2 - Math.min(p - 5, 2)]], fx: p >= 5 && p < 9 ? mid(p === 5 ? "crack" : "home run") : BLANK, fxSlot: "yellow", caption: "is batting" };

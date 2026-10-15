@@ -54,7 +54,7 @@ async function readJson<T>($: EngineInterface, path: string, fallback: T): Promi
 }
 
 async function readConfig($: EngineInterface): Promise<Config> {
-  return { palette: 'omarchy', sidebar: false, ...(await readJson<Config>($, await configPath($), {})) }
+  return { palette: 'beach', sidebar: false, ...(await readJson<Config>($, await configPath($), {})) }
 }
 
 async function writeConfig($: EngineInterface, patch: Config): Promise<Config> {
@@ -156,7 +156,7 @@ async function fetchGithub($: EngineInterface, path: string, branch: string): Pr
       }
     } catch {}
   }
-  const runs = await run($, ['gh', 'run', 'list', '-R', path, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\(.status) \(.conclusion)"'])
+  const runs = await run($, ['gh', 'run', 'list', '-R', path, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\\(.status) \\(.conclusion)"'])
   if (runs && !runs.startsWith('null')) {
     const [state, conclusion] = runs.split(' ')
     remote.ci = state !== 'completed' ? 'pending' : conclusion === 'success' ? 'success' : 'failure'
@@ -658,7 +658,7 @@ export const register: Register = on => {
     const sub = e.props.args.trim().split(/\s+/)[0] ?? ''
     if (sub !== 'help' || (e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.isErrored) return next(e)
     const { Box, Text } = $.ui.resolve(e)
-    const p = (await read($, palette)) ?? (resolvePalette('claude') as TamaPalette)
+    const p = (await read($, palette)) ?? (resolvePalette('beach') as TamaPalette)
     const sections = await helpSections($)
     const width = Math.max(60, Math.min(96, (e.viewport?.columns ?? 100) - 4))
     return (
@@ -704,7 +704,7 @@ export const register: Register = on => {
       await read($, usage),
       await read($, limits),
     ]
-    const p = pal ?? (resolvePalette('claude') as TamaPalette)
+    const p = pal ?? (resolvePalette('beach') as TamaPalette)
     if (!data) return next(e)
     const width = Math.max(60, Math.min(78, (e.viewport?.columns ?? 100) - 4))
 
