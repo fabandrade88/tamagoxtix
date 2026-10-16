@@ -330,7 +330,7 @@ install only their own folder. Screenshots are real captures
 
 ## Changelog
 
-### Unreleased
+### 2.1.0
 
 - **Cheer scenes**: 36 scenes where the monster cheers you on while you type a
   prompt (pom-poms, fireworks, a trophy, a high five…), a new one every 10
