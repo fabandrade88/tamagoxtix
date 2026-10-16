@@ -6,19 +6,46 @@
 ![herdr plugin](https://img.shields.io/badge/herdr-plugin-7fbf6a)
 
 A tiny pixel monster that lives in your terminal while you work with Claude Code.
-It acts out what Claude is doing, hangs out with you between turns, and keeps an
-eye on your token usage and your GitHub or GitLab repo.
+It acts out what Claude is doing, cheers you on while you write your prompt,
+hangs out with you between turns, and keeps an eye on your token usage and your
+GitHub or GitLab repo.
 
-![Between turns: the monster, your usage, your repo and the powerline status line](docs/screenshots/idle.png)
+![The monster cheering while a prompt is typed, with usage, the repo and the powerline status line](docs/screenshots/cheer.png)
 
-**38** monster bodies × **7** kinds of legs · **77** idle scenes · **91** work
-scenes · **12** palettes · GitHub and GitLab · zero dependencies
+**38** monster bodies × **7** kinds of legs · **91** work scenes · **77** idle
+scenes · **36** cheer scenes · **12** palettes · GitHub and GitLab · zero
+dependencies
 
-tamagoxtix comes in two pieces that work on their own or together:
+## Quick start
+
+```
+/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix
+/tamagoxtix doctor
+```
+
+The first line installs the Claude Code mod; the second checks that everything
+it needs is there. Using [herdr](https://herdr.dev)? Add
+`herdr plugin install fabandrade88/tamagoxtix/herdr` too. More in
+[Install](#install).
+
+## Contents
+
+- [Two pieces](#two-pieces)
+- [Claude Code](#claude-code)
+  - [The monster's day](#the-monsters-day): while Claude works, while you type, between turns
+  - [The usage card](#the-usage-card) · [Powerline status line](#powerline-status-line) · [Palettes and the chat theme](#palettes-and-the-chat-theme)
+  - [Commands](#commands) · [Where it works](#where-it-works)
+- [herdr](#herdr)
+- [Install](#install) · [What it touches](#what-it-touches) · [Troubleshooting](#troubleshooting)
+- [Development](#development) · [Changelog](#changelog)
+
+## Two pieces
+
+TamaGoxtix comes in two pieces that work on their own or together:
 
 | | For | What you get |
 | --- | --- | --- |
-| [**Claude Code mod**](#claude-code) | everyone using Claude Code in a terminal | the monster, the usage card, palettes, the powerline status line |
+| [**Claude Code mod**](#claude-code) | everyone using Claude Code | the monster, the usage card, palettes, the powerline status line |
 | [**herdr plugin**](#herdr) | people running their agents in [herdr](https://herdr.dev) | a usage popup and a status area for herdr's tab bar |
 
 Both share one palette and one set of numbers: switch the palette on one side
@@ -28,7 +55,12 @@ and the other follows.
 
 ## Claude Code
 
-### Your monster, while Claude works
+### The monster's day
+
+Every session gets its own monster, a random body, legs and color;
+`/tamagoxtix reroll` draws another. What it does depends on who is busy.
+
+#### While Claude works
 
 The usual `✻ Thinking… (12s · ↓ 1.2k tokens)` line becomes your monster acting
 out the turn, with the time and the tokens as bars.
@@ -37,10 +69,10 @@ out the turn, with the time and the tokens as bars.
 ![Laying bricks](docs/screenshots/work-b.png)
 
 - **The scene follows what Claude does**, a new one every 15 seconds:
-  - calling the API — laptop, satellite dish, paper airplane, lighthouse…
-  - thinking — chess, Rubik's cube, crystal ball, maze, abacus…
-  - using tools — hammer, saw, pickaxe, welding, 3D printer, crane…
-  - writing the answer — keyboard, typewriter, quill, piano, neon sign…
+  - calling the API: laptop, satellite dish, paper airplane, lighthouse…
+  - thinking: chess, Rubik's cube, crystal ball, maze, abacus…
+  - using tools: hammer, saw, pickaxe, welding, 3D printer, crane…
+  - writing the answer: keyboard, typewriter, quill, piano, neon sign…
 - **IT life**: "this is fine", deploying on a Friday, trying to exit vim, force
   pushing to main, a merge conflict, a blue screen, installing node_modules…
 - **The plant floor**: talking HART to a transmitter, wiring Ethernet-APL, a
@@ -51,25 +83,38 @@ out the turn, with the time and the tokens as bars.
 
 ![Work scenes](docs/screenshots/scenes-work.png)
 
-### Your monster, while Claude waits for you
+#### While you type a prompt
 
-Between turns the monster lives above the prompt and does its own thing, a new
-scene every 40 seconds: naps, eats pizza, does the laundry, throws a party, plays
-the drums, trains with a laser sword, hatches a dragon egg, plays football, gets
-tired and yawns, goes to the bathroom…
+As soon as you start writing, the monster drops what it was doing and roots for
+you, a new cheer every 10 seconds: pom-poms, a GO! sign, fireworks, a drumroll,
+a trophy, a high five, a standing ovation… with a line of encouragement under
+its name. Slash commands and `!` shell lines don't count; send the prompt or
+clear the box and it goes back to its own business.
+
+![Cheer scenes](docs/screenshots/scenes-cheer.png)
+
+#### Between turns
+
+While Claude waits for you, the monster lives above the prompt and does its own
+thing, a new scene every 40 seconds: naps, eats pizza, does the laundry, throws
+a party, plays the drums, trains with a laser sword, hatches a dragon egg, plays
+football, gets tired and yawns, goes to the bathroom…
+
+![Between turns: the monster, your usage, your repo](docs/screenshots/idle.png)
 
 ![Idle scenes](docs/screenshots/scenes-idle.png)
 
-Next to it, two columns (the second goes first on a narrow terminal):
+Next to it, two columns (on a narrow terminal the repo column is left out
+first, then usage):
 
-- **Usage** — your 5-hour and weekly limits as bars with the time until they
+- **Usage**: your 5-hour and weekly limits as bars with the time until they
   reset, this week's tokens per day and today's total.
-- **Your repo** — an octocat on GitHub, a fox on GitLab (gitlab.com or your own
+- **Your repo**: an octocat on GitHub, a fox on GitLab (gitlab.com or your own
   instance): stars, last CI run or pipeline, branch, commits ahead/behind,
   changed files, version, open issues and pull/merge requests. Uses `gh` or
   `glab` when signed in, the public API otherwise.
 
-Every session gets its own monster; `/tamagoxtix reroll` draws another.
+`/tamagoxtix pet off` hides the band; `on` brings it back.
 
 ### The usage card
 
@@ -93,14 +138,17 @@ they fill. `off` puts yours back.
 
 ### Palettes and the chat theme
 
-Everything is drawn in one palette. **`beach`** is tamagoxtix's own (Omarchy's
-Beach: ocean dusk, terracotta, palm green, seafoam, bougainvillea);
-**`omarchy`** follows your active [Omarchy](https://omarchy.org) theme; and
-there are `tokyo-night`, `catppuccin`, `gruvbox`, `nord`, `everforest`,
-`kanagawa`, `rose-pine`, `osaka-jade`, `ristretto` and `matte-black`.
+Everything is drawn in one palette:
 
-`/tamagoxtix theme on` colors the chat itself with the palette, mapped the way
-Omarchy themes Claude Code. `off` goes back to your theme.
+- **`beach`**, the default: Omarchy's Beach (ocean dusk, terracotta, palm green,
+  seafoam, bougainvillea);
+- **`omarchy`**: follows your active [Omarchy](https://omarchy.org) theme;
+- `tokyo-night`, `catppuccin`, `gruvbox`, `nord`, `everforest`, `kanagawa`,
+  `rose-pine`, `osaka-jade`, `ristretto` and `matte-black`.
+
+Every palette has an orange to highlight with. `/tamagoxtix theme on` colors the
+chat itself with the palette, mapped the way Omarchy themes Claude Code; `off`
+goes back to your theme.
 
 ### Commands
 
@@ -112,12 +160,12 @@ Omarchy themes Claude Code. `off` goes back to your theme.
 | --- | --- |
 | `/tamagoxtix` | The usage card |
 | `/tamagoxtix help` | Every command, and which ones are on |
+| `/tamagoxtix doctor` | Check Node.js, git, gh, glab and the font, with how to install what's missing |
 | `/tamagoxtix palette [name]` | List the palettes, or switch |
 | `/tamagoxtix theme on` / `off` | Color the chat with the palette |
 | `/tamagoxtix statusline on` / `off` | The powerline status line |
 | `/tamagoxtix icons nerd` / `plain` | Nerd Font icons and arrows, or plain symbols any font draws |
-| `/tamagoxtix doctor` | Check Node.js, git, gh, glab and the font, with how to install what's missing |
-| `/tamagoxtix pet on` / `off` | Show or hide the monster between turns |
+| `/tamagoxtix pet on` / `off` | Show or hide the monster above the prompt |
 | `/tamagoxtix reroll` | A new monster |
 
 ### Where it works
@@ -125,7 +173,7 @@ Omarchy themes Claude Code. `off` goes back to your theme.
 | | |
 | --- | --- |
 | Claude Code in a terminal (also inside herdr) | everything |
-| Claude Code desktop app (local sessions) | the monster, the idle band and the cards; no status line (the app doesn't show one) |
+| Claude Code desktop app (local sessions) | the monster, the band above the prompt and the cards; no status line (the app doesn't show one) |
 | VS Code / JetBrains extensions | the `/tamagoxtix` commands as text |
 | claude.ai (web, mobile) | not supported: mods run in Claude Code only |
 
@@ -145,8 +193,8 @@ switches the palette, `r` refreshes, `q` closes.
 
 ### The tamagoxtix look for herdr
 
-`tamagoxtix.theme-install` adds a status area right of the tabs — git branch,
-tokens today, the 5-hour and weekly limits, a clock — with Nerd Font icons and
+`tamagoxtix.theme-install` adds a status area right of the tabs (git branch,
+tokens today, the 5-hour and weekly limits, a clock) with Nerd Font icons and
 powerline separators.
 
 - **Colors from herdr's theme** (the default, `theme-follow-herdr`): nothing is
@@ -194,47 +242,27 @@ mod; [herdr](https://herdr.dev) 0.9.0+ for the plugin; a
 [Nerd Font](https://www.nerdfonts.com) (Omarchy ships one) for the icons and the
 powerline arrows, or `/tamagoxtix icons plain` for symbols any font draws.
 Nothing is downloaded or built at install time, and nothing is installed for
-you: after installing, `/tamagoxtix doctor` tells you what is missing and how
-to get it.
+you: `/tamagoxtix doctor` tells you what is missing and how to get it.
 
 The Claude Code side is built on Claude Code's function hooks (mods), an
 early-access API that can change between Claude Code releases.
 
 ### Claude Code mod
 
-At the prompt of a Claude Code session:
-
-```
-/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix
-```
-
-or from a shell: `claude plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix`.
-
-Update with `claude plugin update tamagoxtix`. tamagoxtix only touches Claude
-Code's `settings.json` when you turn the status line or the chat theme on or off,
-changes only those keys, and keeps a copy of the file the first time
-(`settings.json.tamagoxtix-backup`). To remove it, first turn those off:
-
-```
-/tamagoxtix statusline off
-/tamagoxtix theme off
-/plugin uninstall tamagoxtix
-```
+| | |
+| --- | --- |
+| Install | `/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix` (or `claude plugin install …` from a shell) |
+| Update | `claude plugin update tamagoxtix`, then `/reload-plugins` |
+| Remove | `/tamagoxtix statusline off`, `/tamagoxtix theme off`, then `/plugin uninstall tamagoxtix` |
+| Without a marketplace | clone the repo and run `claude --plugin-dir ./tamagoxtix/claude` |
 
 ### herdr plugin
 
-```sh
-herdr plugin install fabandrade88/tamagoxtix/herdr
-```
-
-Update with `herdr plugin update tamagoxtix`. To remove it:
-
-```sh
-herdr plugin action invoke tamagoxtix.theme-uninstall
-herdr plugin uninstall tamagoxtix
-```
-
-Settings live in `~/.config/tamagoxtix/config.json`, shared by both.
+| | |
+| --- | --- |
+| Install | `herdr plugin install fabandrade88/tamagoxtix/herdr` |
+| Update | `herdr plugin update tamagoxtix` |
+| Remove | `herdr plugin action invoke tamagoxtix.theme-uninstall`, then `herdr plugin uninstall tamagoxtix` |
 
 ### Coming from tamaclaude?
 
@@ -247,18 +275,33 @@ herdr plugin action invoke tamaclaude.theme-uninstall   # before removing it fro
 herdr plugin uninstall tamaclaude
 ```
 
+## What it touches
+
+- **Runs** `node`, `git`, and `gh` / `glab` when installed (plus `herdr` inside
+  herdr), always with an argument list, never through a shell.
+- **Network**: only the public API of your project's forge (`api.github.com` or
+  your GitLab host), and only when `gh` / `glab` aren't signed in. No telemetry.
+- **Reads** Claude Code's transcripts (token counts and timestamps only), its
+  `settings.json`, the Omarchy theme colors and your project's version.
+- **Writes** its own `~/.config/tamagoxtix/config.json` and
+  `~/.local/state/tamagoxtix/`. Only when you ask: the `statusLine` and `theme`
+  keys of Claude Code's `settings.json` (never a file that isn't valid JSON, and
+  a copy is kept the first time as `settings.json.tamagoxtix-backup`), the chat
+  theme file, and herdr's `config.toml` (checked with `herdr config check`,
+  restored on uninstall).
+
 ## Troubleshooting
 
-- **A command shows an old usage line, or something new is missing** — the
-  session runs the version it loaded: run `/reload-plugins`.
-- **Squares instead of icons or arrows** — your terminal font has no Nerd Font
-  glyphs: pick a [Nerd Font](https://www.nerdfonts.com) in your terminal, or run
+- **Something new is missing, or a command looks old**: the session runs the
+  version it loaded; run `/reload-plugins`.
+- **Squares instead of icons or arrows**: your terminal font has no Nerd Font
+  glyphs. Pick a [Nerd Font](https://www.nerdfonts.com) in your terminal, or run
   `/tamagoxtix icons plain`.
-- **No usage numbers** — the idle band says so when Node.js is missing;
+- **No usage numbers**: the band says so when Node.js is missing;
   `/tamagoxtix doctor` checks everything TamaGoxtix needs.
-- **No limits in the bars** — Claude Code reports them on Pro and Max plans, after
+- **No limits in the bars**: Claude Code reports them on Pro and Max plans, after
   the session's first response.
-- **herdr's colors don't change with its theme** — the look follows the palette:
+- **herdr's colors don't change with its theme**: the look follows the palette;
   run `herdr plugin action invoke tamagoxtix.theme-follow-herdr`.
 
 ## Development
@@ -273,12 +316,27 @@ npm run test:security             # argv-only commands, known APIs and paths, no
 npm run test:perf                 # frame, usage-reading and hook budgets
 ```
 
-`shared/` holds the monsters, scenes, palettes, powerline and usage reader; each
-package carries its own copy because Claude Code and herdr install only their own
-folder. Screenshots are real captures (`herdr pane read --ansi`) rendered with
-`scripts/ansi-to-svg.mjs`; `scripts/gallery.mjs` draws the scene grids.
+| Folder | |
+| --- | --- |
+| `claude/` | the Claude Code mod: `hooks/register.tsx` (hooks and commands), `hooks/spinner.tsx` and `hooks/idle.tsx` (the animated surfaces), `scripts/statusline.mjs` |
+| `herdr/` | the herdr plugin: `herdr-plugin.toml` and `src/` |
+| `shared/` | monsters, scenes (`scenes.mjs`, `scenes-more.mjs`, `scenes-cheer.mjs`), palettes, powerline, forge parsing and the usage reader |
+| `scripts/` | shared-copy sync, security check, benchmark, screenshots |
+
+Each package carries its own copy of `shared/` because Claude Code and herdr
+install only their own folder. Screenshots are real captures
+(`herdr pane read --ansi`) rendered with `scripts/ansi-to-svg.mjs`;
+`scripts/gallery.mjs idle|work|cheer` draws the scene grids.
 
 ## Changelog
+
+### Unreleased
+
+- **Cheer scenes**: 36 scenes where the monster cheers you on while you type a
+  prompt (pom-poms, fireworks, a trophy, a high five…), a new one every 10
+  seconds, with a line of encouragement under its name.
+- README renewed: quick start, contents, the monster's day in one place, what
+  TamaGoxtix touches.
 
 ### 2.0.1
 
