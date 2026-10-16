@@ -57,6 +57,38 @@ describe('tamagoxtix', () => {
     await ui.unmount()
   })
 
+  test('while you type a prompt the monster cheers you on', async ($, on) => {
+    // the bottom of prompt.edit stands for the editor: the splice applied
+    on('prompt.edit', ($, e) => {
+      const text = e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end)
+      return { text, cursor: e.start + e.inputText.length }
+    })
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    await $.session.start(START)
+    const type = (text: string, inputText: string) =>
+      $.prompt.edit({ origin: { kind: 'composer' }, text, cursor: text.length, start: text.length, end: text.length, inputText })
+    const band = async (surface: 'terminal' | 'desktop') => {
+      const ui = await $.ui.mount({
+        plugin: 'tamagoxtix',
+        surface,
+        component: 'AbovePrompt',
+        props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100 } as never,
+      })
+      for (let i = 0; i < 40; i++) await ui.advance(320)
+      const cheering = (await ui.find({ in: 'tamagoxtix-idle', type: 'Text', text: /enter to send/ })) !== undefined
+      await ui.unmount()
+      return cheering
+    }
+    // a slash command is no prompt: the monster keeps idling
+    await type('', '/tamagoxtix')
+    expect(await band('terminal')).toBe(false)
+    await type('', 'fix the flaky test')
+    for (const surface of ['terminal', 'desktop'] as const) expect(await band(surface)).toBe(true)
+  })
+
   test('/tamagoxtix prints a usage card from the numbers on disk', async ($, on) => {
     const day = (date: string, tokens: number) => ({ date, tokens, output: tokens / 100 })
     const usage = {

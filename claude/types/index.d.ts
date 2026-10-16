@@ -71,6 +71,8 @@ declare module 'claude-code' {
       github: TamaGithub | null
       /** True when `node` could not be started: the usage numbers need it. */
       nodeMissing: boolean
+      /** A prompt is being typed: the band cheers instead of idling. */
+      drafting: boolean
     }
   }
 }

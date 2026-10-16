@@ -23,8 +23,22 @@ const idleSince = atom({ plugin: 'tamagoxtix', key: 'idleSince' } as const, 0)
 const showPet = atom({ plugin: 'tamagoxtix', key: 'showPet' } as const, true)
 const github = atom({ plugin: 'tamagoxtix', key: 'github' } as const, null)
 const nodeMissing = atom({ plugin: 'tamagoxtix', key: 'nodeMissing' } as const, false)
+const drafting = atom({ plugin: 'tamagoxtix', key: 'drafting' } as const, false)
 
 type Config = { palette?: string; sidebar?: boolean; [key: string]: unknown }
+
+// ---- the draft in the prompt box ----
+
+// A prompt is a draft with text that is not a slash command or a shell line;
+// the band redraws only when that flips, not on every key.
+function isPrompt(text: string): boolean {
+  return text.trim().length > 0 && !/^\s*[/!]/.test(text)
+}
+
+async function setDrafting($: EngineInterface, text: string): Promise<void> {
+  const now = isPrompt(text)
+  if (now !== (await read($, drafting))) await update($, drafting, () => now)
+}
 
 // ---- files shared with the herdr plugin ----
 
@@ -752,6 +766,19 @@ export const register: Register = on => {
     )
   })
 
+  // ---- while you type a prompt, the monster cheers you on ----
+
+  on('prompt.edit', async ($, e, next) => {
+    const result = await next(e)
+    await setDrafting($, result?.text ?? e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end))
+    return result
+  })
+
+  on('prompt.change', async ($, e, next) => {
+    await setDrafting($, e.text)
+    return next(e)
+  })
+
   // ---- the idle band: the monster lives above the prompt between turns ----
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -781,6 +808,7 @@ export const register: Register = on => {
           github: repo,
           columns: e.props.bodyColumns,
           nodeMissing: await read($, nodeMissing),
+          cheering: await read($, drafting),
           icons: String((await readConfig($)).icons ?? 'nerd'),
         }}
       />

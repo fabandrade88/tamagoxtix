@@ -2,7 +2,7 @@
 
 A pixel monster in place of Claude Code's spinner: it acts out what Claude is
 doing, hangs out above the prompt between turns next to your usage and your
-GitHub or GitLab repo, and colors everything in one palette.
+GitHub or GitLab repo, cheers you on while you type a prompt, and colors everything in one palette.
 
 ```
 /plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix

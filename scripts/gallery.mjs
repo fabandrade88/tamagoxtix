@@ -1,7 +1,7 @@
 // Prints a grid of scenes in ANSI colors, for README screenshots:
-//   node scripts/gallery.mjs idle|work [palette] [columns] [seed] > gallery.ansi
+//   node scripts/gallery.mjs idle|work|cheer [palette] [columns] [seed] > gallery.ansi
 import { makeMonster, slotColor } from "../shared/monsters.mjs";
-import { IDLE_SCENES, scene, WORK_POOLS } from "../shared/scenes.mjs";
+import { CHEER_SCENES, IDLE_SCENES, scene, WORK_POOLS } from "../shared/scenes.mjs";
 import { hexToRgb, resolvePalette } from "../shared/palettes.mjs";
 
 const [kind = "idle", paletteName = "beach", perRow = "4", seed = "tamagoxtix"] = process.argv.slice(2);
@@ -12,7 +12,9 @@ const RESET = "\x1b[0m";
 const names =
   kind === "work"
     ? [...new Set(["requesting", "thinking", "tool-use", "responding"].flatMap((m) => WORK_POOLS[m]))]
-    : IDLE_SCENES;
+    : kind === "cheer"
+      ? CHEER_SCENES
+      : IDLE_SCENES;
 const colors = ["orange", "magenta", "cyan", "green", "yellow", "blue", "accent", "red"];
 const CELL = 30;
 

@@ -1,9 +1,10 @@
 // Surface module for the band above the prompt while Claude waits for you:
 // the monster naps, snacks, sips coffee, plays, reads or goes to the
-// bathroom, a new scene every 20 seconds.
+// bathroom, a new scene every 40 seconds; while you type a prompt it cheers
+// you on instead, a new cheer every 10 seconds.
 import type { ClientModule, ClientSurface } from 'claude-code'
 
-import { gitlabFox, idleSceneAt, octocat, scene } from './lib/scenes.mjs'
+import { cheerSceneAt, gitlabFox, idleSceneAt, octocat, scene } from './lib/scenes.mjs'
 import { sceneRows } from './art'
 import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette } from '../types'
 
@@ -24,6 +25,8 @@ export type IdleProps = {
   icons: string
   /** `node` could not be started, so there are no usage numbers. */
   nodeMissing: boolean
+  /** You are typing a prompt: cheer scenes instead of idle ones. */
+  cheering?: boolean
 }
 
 // GitHub glyphs: octicons from a Nerd Font, or plain symbols without one.
@@ -38,6 +41,16 @@ const WIDTH = { scene: 28, caption: 46, usage: 40, github: 46 }
 type State = { frame: number }
 
 const FRAME_MS = 320
+
+// The line under the caption while you type, a new one every 10 seconds.
+const CHEERS = [
+  'you got this',
+  'great prompt incoming',
+  'keep going, it is looking good',
+  'Claude is going to love this one',
+  'one more line and ship it',
+  'this is the prompt',
+]
 
 function formatTokens(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
@@ -78,7 +91,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
   const frame = surface.state?.frame ?? 0
   const { monster, palette } = props
   const now = Date.now()
-  const data = scene(monster, idleSceneAt(monster, now), frame)
+  const data = scene(monster, props.cheering ? cheerSceneAt(monster, now) : idleSceneAt(monster, now), frame)
 
   // usage beside the monster: the two limit windows as bars like the
   // spinner's, then this week's days as one column each
@@ -184,7 +197,11 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
           </Text>
           <Text mono color={palette.fg}> {data.caption}</Text>
         </Text>
-        <Text mono color={palette.muted}>waiting for you · idle {formatIdle(now - props.idleSince)}</Text>
+        {props.cheering ? (
+          <Text mono color={palette.orange}>{CHEERS[Math.floor(now / 10_000) % CHEERS.length]} · enter to send</Text>
+        ) : (
+          <Text mono color={palette.muted}>waiting for you · idle {formatIdle(now - props.idleSince)}</Text>
+        )}
         {props.nodeMissing ? (
           <Text mono color={palette.orange}>install Node.js 18+ to see your usage · /tamagoxtix doctor</Text>
         ) : (

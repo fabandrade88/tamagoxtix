@@ -126,8 +126,9 @@ test("icons: same seed, same icon; picks and rerolls change it", async () => {
 test("every scene renders 20x6 px with a caption, for every body", async () => {
   const S = await import("../shared/scenes.mjs");
   const { BODIES, makeMonster } = await import("../shared/monsters.mjs");
-  assert.ok(S.IDLE_SCENES.length >= 77 && S.WORK_SCENES.length >= 91 && BODIES.length >= 38);
-  for (const name of [...S.IDLE_SCENES, ...S.WORK_SCENES]) {
+  assert.ok(S.IDLE_SCENES.length >= 77 && S.WORK_SCENES.length >= 91 && S.CHEER_SCENES.length >= 36 && BODIES.length >= 38);
+  assert.deepEqual(S.CHEER_SCENES.filter((n) => S.IDLE_SCENES.includes(n) || S.WORK_SCENES.includes(n)), []);
+  for (const name of [...S.IDLE_SCENES, ...S.WORK_SCENES, ...S.CHEER_SCENES]) {
     for (const body of BODIES) {
       const m = { ...makeMonster(name), body: body.id };
       for (const frame of [0, 7, 31]) {
@@ -141,4 +142,5 @@ test("every scene renders 20x6 px with a caption, for every body", async () => {
   for (const mode of ["requesting", "thinking", "tool-use", "responding"]) {
     assert.ok(S.WORK_POOLS[mode].includes(S.workSceneAt(makeMonster("x"), mode, Date.now())));
   }
+  assert.ok(S.CHEER_SCENES.includes(S.cheerSceneAt(makeMonster("x"), Date.now())));
 });

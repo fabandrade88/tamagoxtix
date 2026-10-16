@@ -1,13 +1,15 @@
 // Scenes: the monster with props (a burger, a guitar, a laser sword…) and a
 // small column of effects beside it (zZ, notes, sparks, "GOL!").
 //
-// Idle scenes play while the agent waits for you; work scenes follow Claude
+// Idle scenes play while the agent waits for you, cheer scenes while you
+// type a prompt; work scenes follow Claude
 // Code's turn modes, a different one every few seconds. Each scene is a
 // function of the frame number that says the monster's pose and position,
 // which props to draw where, and the effects text. Pure module shared by the
 // herdr plugin and the mod.
 
 import { cellsToRuns, gridToCells, hashString, spriteGrid } from "./monsters.mjs";
+import { ART_CHEER, CHEER } from "./scenes-cheer.mjs";
 import { ART_MORE, IDLE_MORE, IDLE_PARTY, POOLS_MORE, WORK_INDUSTRIAL, WORK_MEMES, WORK_MORE } from "./scenes-more.mjs";
 
 export const SCENE_WIDTH = 20; // pixels, one text column each
@@ -285,7 +287,7 @@ const IDLE = {
   boba: (t) => ({ pose: t % 10 >= 7 ? "chew" : "idle", props: [["boba", 13, 1]], fx: t % 10 >= 7 ? mid("slurp") : BLANK, fxSlot: "cyan", caption: "is drinking bubble tea" }),
 };
 
-Object.assign(ART, ART_MORE);
+Object.assign(ART, ART_MORE, ART_CHEER);
 Object.assign(IDLE, IDLE_MORE, IDLE_PARTY);
 
 export const IDLE_SCENES = Object.keys(IDLE);
@@ -429,8 +431,16 @@ export function workSceneAt(monster, mode, now, period = 15_000) {
   return pool[hashString(`${monster.seed}:${mode}:${block}`) % pool.length];
 }
 
+// Cheer scenes play while you type a prompt: a new one every 10 seconds.
+export const CHEER_SCENES = Object.keys(CHEER);
+
+export function cheerSceneAt(monster, now, period = 10_000) {
+  const block = Math.floor(now / period);
+  return CHEER_SCENES[hashString(`${monster.seed}:cheer:${block}`) % CHEER_SCENES.length];
+}
+
 export function scene(monster, name, frame) {
-  const make = IDLE[name] ?? WORK[name] ?? WORK[WORK_POOLS[name]?.[0]] ?? IDLE.sleep;
+  const make = IDLE[name] ?? WORK[name] ?? CHEER[name] ?? WORK[WORK_POOLS[name]?.[0]] ?? IDLE.sleep;
   const s = make(frame);
   const grid = blankGrid();
   if (!s.hide) drawMonster(grid, monster, s.pose ?? "idle", frame, s.ox ?? 1);
