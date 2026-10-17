@@ -466,7 +466,8 @@ async function probeAll($: EngineInterface): Promise<Probe[]> {
 
 // What the band shows at a width: the scene and caption, then usage, then
 // the repo column (idle.tsx WIDTH).
-const BAND_WIDTH = { usage: 28 + 46 + 40, repo: 28 + 46 + 40 + 46 }
+// Under `min` columns the band and the spinner become one line.
+const BAND_WIDTH = { min: 44, usage: 28 + 46 + 40, repo: 28 + 46 + 40 + 46 }
 
 async function doctorText($: EngineInterface, columns = 80): Promise<string> {
   const lines = ['TamaGoxtix doctor', '']
@@ -478,7 +479,7 @@ async function doctorText($: EngineInterface, columns = 80): Promise<string> {
     if (!found) lines.push(`    needed for ${check.why}${check.required ? '' : ' (optional)'}`, `    install: ${check.install}`)
   }
   const pet = await read($, showPet)
-  const fits = columns >= BAND_WIDTH.repo ? 'scene, usage and repo' : columns >= BAND_WIDTH.usage ? 'scene and usage (the repo column needs 160)' : 'scene only (usage needs 114 columns, the repo column 160)'
+  const fits = columns >= BAND_WIDTH.repo ? 'scene, usage and repo' : columns >= BAND_WIDTH.usage ? 'scene and usage (the repo column needs 160)' : columns >= BAND_WIDTH.min ? 'scene only (usage needs 114 columns, the repo column 160)' : 'one line (the scene needs 44 columns)'
   lines.push(
     '',
     pet ? 'Monster band: on (/tamagoxtix pet off hides it)' : '✖ Monster band: hidden by /tamagoxtix pet off (pet on brings it back)',
@@ -953,6 +954,7 @@ export const register: Register = on => {
       word: e.props.message ?? e.props.word,
       startedAt: current?.startedAt ?? now,
       tokens: current?.tokens ?? 0,
+      columns: e.viewport?.columns ?? 100,
     }
     const { Client } = $.ui.resolve(e)
     return <Client module="./spinner.tsx" key="tamagoxtix-spinner" props={spinnerProps} />

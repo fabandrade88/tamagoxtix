@@ -299,6 +299,36 @@ describe('tamagoxtix', () => {
     expect(result.text).toContain('shrinks to one line')
   })
 
+  test('on a narrow screen the monster keeps its shape, and under 44 columns the band is one line', async ($, on) => {
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    await $.session.start(START)
+    const narrow = await $.ui.mount({
+      plugin: 'tamagoxtix',
+      surface: 'terminal',
+      component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 5, bodyColumns: 50 } as never,
+    })
+    await narrow.advance(320)
+    expect(await narrow.find({ in: 'tamagoxtix-idle', type: 'Text', text: /waiting for you/ })).toBeDefined()
+    await narrow.unmount()
+    const tiny = await $.ui.mount({
+      plugin: 'tamagoxtix',
+      surface: 'terminal',
+      component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 5, bodyColumns: 40 } as never,
+    })
+    await tiny.advance(320)
+    expect(await tiny.find({ in: 'tamagoxtix-idle', type: 'Text', text: /waiting for you/ })).toBeUndefined()
+    expect(await tiny.find({ in: 'tamagoxtix-idle', type: 'Text', text: /^ [a-z]/ })).toBeDefined()
+    await tiny.unmount()
+    const result = await $.command.run({ command: 'tamagoxtix', args: 'doctor', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 40 } })
+    expect(result.text).toContain('40 columns, room for one line')
+  })
+
   test('outside a repository git is asked once, not on every turn', async ($, on) => {
     let remotes = 0
     on('session.start', ($, e) => ({ cwd: e.cwd }))

@@ -15,11 +15,12 @@ type SceneData = { rows: Run[][]; fx: string[]; fxSlot: string; caption: string 
 
 // Draws a scene (scenes.mjs) as Text rows (monospaced, so the desktop app lines
 // them up as a terminal does): the pixels as half blocks in the monster's
-// palette colors, then the effects column.
+// palette colors, then the effects column. A row never wraps: on a narrow
+// screen the effects are cut at the edge rather than the pixels split apart.
 function sceneRows(Text: ClientElements['Text'], monster: TamaMonster, palette: TamaPalette, data: SceneData) {
   const color = (slot?: string) => (slot ? slotColor(monster, slot, palette) : undefined)
   return data.rows.map((runs, i) => (
-    <Text mono>
+    <Text mono wrap="truncate">
       {runs.map(run => (
         <Text mono color={color(run.fg)} backgroundColor={color(run.bg)}>
           {run.text}
@@ -37,6 +38,8 @@ export type SpinnerProps = {
   word: string
   startedAt: number
   tokens: number
+  /** The terminal's width: under MIN_WIDTH the spinner is one line. */
+  columns: number
 }
 
 type State = { frame: number }
@@ -46,6 +49,8 @@ const BAR_CELLS = 8
 const TOKENS_PER_BAR = 10_000 // the token bar fills once per 10k tokens, then earns a $
 const MAX_MARKS = 10
 const GAP = 3 // columns between the monster and the text
+const MIN_WIDTH = 44 // narrower than this: one line, no monster
+const NARROW = 64 // narrower than this: a tighter gap
 
 const MODE_LABEL: Record<string, string> = {
   requesting: 'is calling',
@@ -106,18 +111,36 @@ const Spinner: ClientModule<SpinnerProps, State> = (props, surface: ClientSurfac
   const dots = '.'.repeat((Math.floor(frame / 3) % 3) + 1).padEnd(3)
   const label = acting.caption || (MODE_LABEL[mode] ?? mode)
 
+  const columns = props.columns
+
+  // too narrow for the monster: what it is up to, the time and the tokens
+  if (columns < MIN_WIDTH) {
+    return (
+      <Text mono wrap="truncate-end">
+        <Text mono color={palette.accent} bold>
+          {props.word}
+        </Text>
+        <Text mono color={palette.accent}>{dots}</Text>
+        <Text mono color={palette.cyan}>{` ${CLOCK[seconds % 4]} ${timeLabel}`}</Text>
+        <Text mono color={palette.yellow}>{` · $ ${moneyLabel}`}</Text>
+        <Text mono color={palette.muted}>{` · ${monster.name} ${label}`}</Text>
+      </Text>
+    )
+  }
+
+  // the monster keeps its width; the text beside it is cut at the edge
   return (
-    <Box flexDirection="row" gap={GAP} marginTop={1}>
-      <Box flexDirection="column">{sprite}</Box>
-      <Box flexDirection="column">
-        <Text mono>
+    <Box flexDirection="row" gap={columns < NARROW ? 2 : GAP} marginTop={1}>
+      <Box flexDirection="column" flexShrink={0}>{sprite}</Box>
+      <Box flexDirection="column" flexShrink={1}>
+        <Text mono wrap="truncate-end">
           <Text mono color={palette.accent} bold>
             {props.word}
           </Text>
           <Text mono color={palette.accent}>{dots}</Text>
           <Text mono color={palette.muted}> {monster.name} {label}</Text>
         </Text>
-        <Text mono>
+        <Text mono wrap="truncate-end">
           <Text mono color={palette.cyan}>{CLOCK[seconds % 4]} </Text>
           <Text mono color={palette.fg} bold>
             {timeLabel.padEnd(width)}
@@ -126,7 +149,7 @@ const Spinner: ClientModule<SpinnerProps, State> = (props, surface: ClientSurfac
           <Text mono color={palette.cyan}>{time.bar}</Text>
           <Text mono color={palette.cyan}> {marks('●', time.laps)}</Text>
         </Text>
-        <Text mono>
+        <Text mono wrap="truncate-end">
           <Text mono color={palette.yellow} bold>
             {'$ '}
             {moneyLabel.padEnd(width)}

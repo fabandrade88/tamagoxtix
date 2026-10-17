@@ -116,7 +116,8 @@ football, gets tired and yawns, goes to the bathroom…
 ![Idle scenes](docs/screenshots/scenes-idle.png)
 
 Next to it, two columns (on a narrow terminal the repo column is left out
-first, then usage):
+first, then usage; the monster always keeps its shape, and under 44 columns
+the band and the spinner become one line):
 
 - **Usage**: your 5-hour and weekly limits as bars with the time until they
   reset, this week's tokens per day and today's total.
@@ -327,8 +328,8 @@ herdr plugin uninstall tamaclaude
 
 The band above the prompt needs 3 free rows. With 1 or 2 (a short herdr pane,
 a long draft) it shrinks to one line, and it steps aside while Claude works or
-a survey is shown. `/tamagoxtix doctor` explains this and says which columns
-fit your terminal's width.
+a survey is shown. Under 44 columns it is one line too. `/tamagoxtix doctor`
+explains this and says which columns fit your terminal's width.
 
 ### Other problems
 
@@ -371,6 +372,15 @@ install only their own folder. Screenshots are real captures
 `scripts/gallery.mjs idle|work|cheer` draws the scene grids.
 
 ## Changelog
+
+### 2.1.5
+
+- The monsters keep their shape on small screens: a scene row never wraps,
+  so a narrow terminal cuts the text beside the monster (with `…`) instead
+  of splitting its pixels across lines. Under 64 columns the gap tightens;
+  under 44 the idle band and the spinner become one line. The spinner now
+  knows the terminal's width, and both follow a resize.
+- `/tamagoxtix doctor` says when only the one-line band fits.
 
 ### 2.1.4
 
