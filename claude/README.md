@@ -35,7 +35,7 @@ command that comes from the network:
 | `herdr pane get <pane>`, `herdr pane report-metadata <pane> --source tamagoxtix --token monster=<icon>`, `herdr plugin action invoke tamagoxtix.sidebar-refresh`, `herdr plugin action invoke tamagoxtix.theme-refresh` | only inside a [herdr](https://herdr.dev) pane (`HERDR_PANE_ID` set) | the monster's identity for the pane, its face in herdr's sidebar, and the herdr plugin's palette |
 | `node --version`, `git --version`, `gh auth status`, `glab --version` | only when you run `/tamagoxtix doctor` | to say what is installed |
 
-Each command is written out in full at its call in `hooks/register.tsx`. The
+Each command is written out in full at its call in `register.tsx`. The
 owner, repository, branch and host in those arguments come from your project's
 own git remote, cleaned of control characters; `<pane>` is herdr's own pane id.
 

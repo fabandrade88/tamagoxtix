@@ -10,7 +10,7 @@ import {
   paletteChoices,
   resolvePalette,
 } from './lib/palettes.mjs'
-import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette, TamaUsage } from '../types'
+import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette, TamaUsage } from './types'
 
 const palette = atom({ plugin: 'tamagoxtix', key: 'palette' } as const, null)
 const monster = atom({ plugin: 'tamagoxtix', key: 'monster' } as const, null)
@@ -46,7 +46,10 @@ async function setDrafting($: EngineInterface, text: string): Promise<void> {
 // ---- files shared with the herdr plugin ----
 
 async function home($: EngineInterface): Promise<string> {
-  return (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? '.'
+  const unix = await $.env.get('HOME')
+  if (unix) return unix
+  const windows = await $.env.get('USERPROFILE')
+  return windows ?? '.'
 }
 
 // The folders it reads and writes. Every write names its file in full at the
@@ -54,22 +57,26 @@ async function home($: EngineInterface): Promise<string> {
 
 // $XDG_CONFIG_HOME, else ~/.config
 async function configBase($: EngineInterface): Promise<string> {
-  return (await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`
+  const xdg = await $.env.get('XDG_CONFIG_HOME')
+  return xdg ?? `${await home($)}/.config`
 }
 
 // $XDG_STATE_HOME, else ~/.local/state
 async function stateBase($: EngineInterface): Promise<string> {
-  return (await $.env.get('XDG_STATE_HOME')) ?? `${await home($)}/.local/state`
+  const xdg = await $.env.get('XDG_STATE_HOME')
+  return xdg ?? `${await home($)}/.local/state`
 }
 
 // Claude Code's own folder: $CLAUDE_CONFIG_DIR, else ~/.claude
 async function claudeDir($: EngineInterface): Promise<string> {
-  return (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await home($)}/.claude`
+  const custom = await $.env.get('CLAUDE_CONFIG_DIR')
+  return custom ?? `${await home($)}/.claude`
 }
 
 async function readJson($: EngineInterface, path: string, fallback: unknown): Promise<any> {
   try {
-    return JSON.parse(await $.fs.read(path))
+    const text = await $.fs.read(path)
+    return JSON.parse(text)
   } catch {
     return fallback
   }
@@ -80,10 +87,10 @@ async function readConfig($: EngineInterface): Promise<Config> {
 }
 
 async function writeConfig($: EngineInterface, patch: Config): Promise<Config> {
-  const next = { ...(await readConfig($)), ...patch }
+  const merged = { ...(await readConfig($)), ...patch }
   const base = await configBase($)
-  await $.fs.write(`${base}/tamagoxtix/config.json`, JSON.stringify(next, null, 2) + '\n')
-  return next
+  await $.fs.write(`${base}/tamagoxtix/config.json`, JSON.stringify(merged, null, 2) + '\n')
+  return merged
 }
 
 // Omarchy's colors are read only for the `omarchy` palette (or no choice
@@ -95,7 +102,8 @@ async function loadPalette($: EngineInterface, choice?: string): Promise<TamaPal
   if (pick === undefined || pick === 'omarchy') {
     const path = `${await home($)}/${OMARCHY_COLORS_PATH}`
     try {
-      if (await $.fs.exists(path)) omarchy = await $.fs.read(path)
+      const there = await $.fs.exists(path)
+      if (there) omarchy = await $.fs.read(path)
     } catch {}
   }
   return resolvePalette(pick, omarchy) as TamaPalette
@@ -103,17 +111,13 @@ async function loadPalette($: EngineInterface, choice?: string): Promise<TamaPal
 
 // ---- running programs ----
 
-// What a program printed, or null when it failed or was not there. Each
-// caller writes the whole command at its own `$.process.run` call.
+// What a program printed, or null when it failed. Each caller writes the
+// whole command at its own `$.process.run` call, in a try: a program that is
+// not installed rejects.
 type RunResult = { exitCode: number; stdout: string; stderr?: string }
 
-async function output(pending: Promise<RunResult>): Promise<string | null> {
-  try {
-    const { exitCode, stdout } = await pending
-    return exitCode === 0 ? stdout.trim() : null
-  } catch {
-    return null
-  }
+function okText(result: RunResult): string | null {
+  return result.exitCode === 0 ? result.stdout.trim() : null
 }
 
 // ---- herdr ----
@@ -124,7 +128,8 @@ async function herdrPane($: EngineInterface): Promise<string | undefined> {
 
 // Asks herdr to redraw the tamagoxtix sidebar and look (inside herdr only).
 async function refreshHerdr($: EngineInterface): Promise<void> {
-  if (!(await herdrPane($))) return
+  const pane = await herdrPane($)
+  if (!pane) return
   try {
     await $.process.run(['herdr', 'plugin', 'action', 'invoke', 'tamagoxtix.sidebar-refresh'], { timeoutMs: 5000 })
     await $.process.run(['herdr', 'plugin', 'action', 'invoke', 'tamagoxtix.theme-refresh'], { timeoutMs: 5000 })
@@ -189,42 +194,83 @@ async function paintSidebar($: EngineInterface, pet: TamaMonster, state: string)
 const GITHUB_TTL = 10 * 60_000
 const RUN = { timeoutMs: 10_000 }
 
-// A URL path segment: what encodeURIComponent gives, without the global.
+const UNRESERVED = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~'
+const HEX = '0123456789ABCDEF'
+
+// A URL path segment: each byte outside the unreserved set as %XX.
 function encodeSegment(text: string): string {
   let out = ''
   for (const byte of new TextEncoder().encode(text)) {
     const ch = String.fromCharCode(byte)
-    out += /[A-Za-z0-9\-_.~]/.test(ch) ? ch : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`
+    if (UNRESERVED.includes(ch)) out += ch
+    else out += '%' + HEX.charAt(Math.floor(byte / 16)) + HEX.charAt(byte % 16)
   }
   return out
 }
 
+// A number from a JSON field, or null.
+function numberOr(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+// Parses JSON a program printed, or null.
+function parseJson(text: string | null): unknown {
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
 type Remote = Pick<TamaGithub, 'issues' | 'prs' | 'stars' | 'ci'>
+
+// One read of a forge's public API over https, for a public repository when
+// gh or glab is missing or not signed in; no credentials are sent. The host is
+// api.github.com for GitHub, or the GitLab host named in the git remote.
+async function publicApi($: EngineInterface, host: string, pathname: string): Promise<unknown> {
+  try {
+    const res = await $.http.fetch(`https://${host}/${pathname}`)
+    return res.ok ? JSON.parse(res.text) : null
+  } catch {
+    return null
+  }
+}
+
+const GITHUB_API = 'api.github.com'
 
 async function fetchGithub($: EngineInterface, path: string, branch: string): Promise<Remote> {
   const remote: Remote = { issues: null, prs: null, stars: null, ci: null }
-  const info = await output($.process.run(['gh', 'api', `repos/${path}`, '--jq', '[.open_issues_count, .stargazers_count] | @tsv'], RUN))
-  const prs = await output($.process.run(['gh', 'pr', 'list', '-R', path, '--state', 'open', '--limit', '100', '--json', 'number', '--jq', 'length'], RUN))
-  if (info) {
-    const [open = 0, stars = 0] = info.split('\t').map(Number)
-    remote.prs = prs === null ? null : Number(prs)
-    remote.issues = Math.max(0, open - (remote.prs ?? 0))
-    remote.stars = stars
-  } else {
+  let repoText: string | null = null
+  let prsText: string | null = null
+  let runsText: string | null = null
+  try {
+    const repoInfo = await $.process.run(['gh', 'api', 'repos/' + path], RUN)
+    repoText = okText(repoInfo)
+    const openPrs = await $.process.run(['gh', 'pr', 'list', '-R', path, '--state', 'open', '--limit', '100', '--json', 'number'], RUN)
+    prsText = okText(openPrs)
+    const lastRun = await $.process.run(['gh', 'run', 'list', '-R', path, '--branch', branch, '--limit', '1', '--json', 'status,conclusion'], RUN)
+    runsText = okText(lastRun)
+  } catch {}
+  let repoJson = parseJson(repoText) as { open_issues_count?: unknown; stargazers_count?: unknown } | null
+  if (!repoJson) {
     // no gh: the public API still answers for public repositories
-    try {
-      const res = await $.http.fetch(`https://api.github.com/repos/${path}`)
-      if (res.ok) {
-        const body = JSON.parse(res.text) as { open_issues_count?: number; stargazers_count?: number }
-        remote.issues = body.open_issues_count ?? null
-        remote.stars = body.stargazers_count ?? null
-      }
-    } catch {}
+    const fromApi = await publicApi($, GITHUB_API, `repos/${path}`)
+    repoJson = fromApi as { open_issues_count?: unknown; stargazers_count?: unknown } | null
   }
-  const runs = await output($.process.run(['gh', 'run', 'list', '-R', path, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\\(.status) \\(.conclusion)"'], RUN))
-  if (runs && !runs.startsWith('null')) {
-    const [state, conclusion] = runs.split(' ')
-    remote.ci = state !== 'completed' ? 'pending' : conclusion === 'success' ? 'success' : 'failure'
+  const prList = parseJson(prsText)
+  const runList = parseJson(runsText)
+  if (Array.isArray(prList)) remote.prs = prList.length
+  if (repoJson) {
+    const open = numberOr(repoJson.open_issues_count)
+    // GitHub counts pull requests among the open issues
+    remote.issues = open === null ? null : Math.max(0, open - (remote.prs ?? 0))
+    remote.stars = numberOr(repoJson.stargazers_count)
+  }
+  const lastRunJson = Array.isArray(runList) ? (runList[0] as { status?: string; conclusion?: string } | undefined) : undefined
+  if (lastRunJson && lastRunJson.status) {
+    if (lastRunJson.status !== 'completed') remote.ci = 'pending'
+    else remote.ci = lastRunJson.conclusion === 'success' ? 'success' : 'failure'
   }
   return remote
 }
@@ -233,18 +279,18 @@ async function fetchGithub($: EngineInterface, path: string, branch: string): Pr
 // the instance's public API, https://<host>/api/v4/<endpoint> (public
 // projects only, no credentials sent).
 async function gitlabGet($: EngineInterface, host: string, endpoint: string): Promise<unknown> {
-  const viaGlab = await output($.process.run(['glab', 'api', '--hostname', host, endpoint], RUN))
+  let viaGlab: string | null = null
+  try {
+    const answer = await $.process.run(['glab', 'api', '--hostname', host, endpoint], RUN)
+    viaGlab = okText(answer)
+  } catch {}
   if (viaGlab) {
     try {
       return JSON.parse(viaGlab)
     } catch {}
   }
-  try {
-    const res = await $.http.fetch(`https://${host}/api/v4/${endpoint}`)
-    return res.ok ? JSON.parse(res.text) : null
-  } catch {
-    return null
-  }
+  const fromApi = await publicApi($, host, `api/v4/${endpoint}`)
+  return fromApi
 }
 
 // How many items a GitLab list has: its x-total header, else the list itself.
@@ -284,7 +330,12 @@ async function refreshGithub($: EngineInterface) {
   const skip = await read($, noRepo)
   const now = await $.clock.now()
   if (skip?.cwd === cwd && now - skip.at < GITHUB_TTL) return
-  const parsed = parseRemote(await output($.process.run(['git', 'remote', 'get-url', 'origin'], RUN)))
+  let remoteUrl: string | null = null
+  try {
+    const origin = await $.process.run(['git', 'remote', 'get-url', 'origin'], RUN)
+    remoteUrl = okText(origin)
+  } catch {}
+  const parsed = parseRemote(remoteUrl)
   if (!parsed) {
     await update($, noRepo, () => ({ cwd, at: now }))
     await update($, github, () => null)
@@ -292,11 +343,21 @@ async function refreshGithub($: EngineInterface) {
   }
   if (skip) await update($, noRepo, () => null)
   const repo = parsed.path
-  const branch = (await output($.process.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], RUN))) ?? '?'
-  const status = (await output($.process.run(['git', 'status', '--porcelain'], RUN))) ?? ''
-  const counts = (await output($.process.run(['git', 'rev-list', '--left-right', '--count', '@{u}...HEAD'], RUN))) ?? ''
+  let branch = '?'
+  let status = ''
+  let counts = ''
+  let version: string | null = null
+  try {
+    const head = await $.process.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], RUN)
+    branch = okText(head) ?? '?'
+    const changed = await $.process.run(['git', 'status', '--porcelain'], RUN)
+    status = okText(changed) ?? ''
+    const aheadBehind = await $.process.run(['git', 'rev-list', '--left-right', '--count', '@{u}...HEAD'], RUN)
+    counts = okText(aheadBehind) ?? ''
+    const tag = await $.process.run(['git', 'describe', '--tags', '--abbrev=0'], RUN)
+    version = okText(tag)
+  } catch {}
   const [behind = 0, ahead = 0] = counts.split(/\s+/).map(Number)
-  let version = await output($.process.run(['git', 'describe', '--tags', '--abbrev=0'], RUN))
   if (!version) {
     const pkg = await readJson($, 'package.json', {})
     version = pkg.version ? `v${pkg.version}` : null
@@ -313,17 +374,24 @@ async function refreshGithub($: EngineInterface) {
 
   const previous = await read($, github)
   const fresh = previous?.repo === repo && now - previous.fetchedAt < GITHUB_TTL
-  const remote: Remote & { fetchedAt: number } =
-    fresh && previous
-      ? { issues: previous.issues, prs: previous.prs, stars: previous.stars, ci: previous.ci, fetchedAt: previous.fetchedAt }
-      : {
-          ...(parsed.forge === 'github'
-            ? await fetchGithub($, repo, branch)
-            : await fetchGitlab($, parsed.host, repo, branch)),
-          fetchedAt: now,
-        }
-  const next: TamaGithub = { ...local, ...remote }
-  await update($, github, () => next)
+  if (fresh && previous) {
+    const kept: TamaGithub = { ...local, issues: previous.issues, prs: previous.prs, stars: previous.stars, ci: previous.ci, fetchedAt: previous.fetchedAt }
+    await update($, github, () => kept)
+    return
+  }
+  const numbers = await fetchForge($, parsed.forge, parsed.host, repo, branch)
+  const latest: TamaGithub = { ...local, ...numbers, fetchedAt: now }
+  await update($, github, () => latest)
+}
+
+// The forge's numbers for a repository: GitHub's, else GitLab's.
+async function fetchForge($: EngineInterface, forge: string, host: string, path: string, branch: string): Promise<Remote> {
+  if (forge === 'github') {
+    const hub = await fetchGithub($, path, branch)
+    return hub
+  }
+  const lab = await fetchGitlab($, host, path, branch)
+  return lab
 }
 
 // ---- usage ----
@@ -363,27 +431,37 @@ const CHECKS: Check[] = [
 
 type Probe = { found: boolean; version: string }
 
+const MISSING: Probe = { found: false, version: '' }
+
 // Whether a program answered, and the first line it printed.
-async function probe(pending: Promise<RunResult>, check: Check): Promise<Probe> {
-  try {
-    const { exitCode, stdout, stderr } = await pending
-    const version = (stdout || stderr || '').trim().split('\n')[0] ?? ''
-    return { found: exitCode === 0 && (check.ok ? check.ok(version) : true), version }
-  } catch {
-    return { found: false, version: '' }
-  }
+function probe(result: RunResult, check: Check): Probe {
+  const version = (result.stdout || result.stderr || '').trim().split('\n')[0] ?? ''
+  return { found: result.exitCode === 0 && (check.ok ? check.ok(version) : true), version }
 }
 
-// The four programs the doctor checks, each command written out in full.
+// The four programs the doctor checks, each command written out in full; a
+// program that is not installed rejects and reads as missing.
 async function probeAll($: EngineInterface): Promise<Probe[]> {
   const [node, git, gh, glab] = CHECKS as [Check, Check, Check, Check]
   const DOCTOR = { timeoutMs: 5000 }
-  return [
-    await probe($.process.run(['node', '--version'], DOCTOR), node),
-    await probe($.process.run(['git', '--version'], DOCTOR), git),
-    await probe($.process.run(['gh', 'auth', 'status'], DOCTOR), gh),
-    await probe($.process.run(['glab', '--version'], DOCTOR), glab),
-  ]
+  const found: Probe[] = [MISSING, MISSING, MISSING, MISSING]
+  try {
+    const answer = await $.process.run(['node', '--version'], DOCTOR)
+    found[0] = probe(answer, node)
+  } catch {}
+  try {
+    const answer = await $.process.run(['git', '--version'], DOCTOR)
+    found[1] = probe(answer, git)
+  } catch {}
+  try {
+    const answer = await $.process.run(['gh', 'auth', 'status'], DOCTOR)
+    found[2] = probe(answer, gh)
+  } catch {}
+  try {
+    const answer = await $.process.run(['glab', '--version'], DOCTOR)
+    found[3] = probe(answer, glab)
+  } catch {}
+  return found
 }
 
 // What the band shows at a width: the scene and caption, then usage, then
@@ -428,10 +506,10 @@ function formatCount(n: number): string {
 function resetIn(now: number, iso?: string): string {
   const ms = iso ? Date.parse(iso) - now : NaN
   if (!Number.isFinite(ms) || ms <= 0) return ''
-  const h = Math.floor(ms / 3_600_000)
-  const m = Math.floor((ms % 3_600_000) / 60_000)
-  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`
-  return h ? `${h}h ${m}m` : `${m}m`
+  const hrs = Math.floor(ms / 3_600_000)
+  const mins = Math.floor((ms % 3_600_000) / 60_000)
+  if (hrs >= 24) return `${Math.floor(hrs / 24)}d ${hrs % 24}h`
+  return hrs ? `${hrs}h ${mins}m` : `${mins}m`
 }
 
 const LEVELS = ' ▁▂▃▄▅▆▇█'
@@ -475,12 +553,12 @@ function meter(fraction: number, width: number): [string, string] {
 
 async function applyPalette($: EngineInterface, choice: string): Promise<TamaPalette> {
   await writeConfig($, { palette: choice })
-  const next = await loadPalette($, choice)
-  await update($, palette, () => next)
+  const chosen = await loadPalette($, choice)
+  await update($, palette, () => chosen)
   // the chat theme file is rewritten only where the chat uses it
-  if ((await readClaudeSettings($)).theme === 'custom:tamagoxtix') await writeChatTheme($, next)
+  if ((await readClaudeSettings($)).theme === 'custom:tamagoxtix') await writeChatTheme($, chosen)
   await refreshHerdr($)
-  return next
+  return chosen
 }
 
 // The chat theme file, ~/.claude/themes/tamagoxtix.json, from the palette.
@@ -497,7 +575,9 @@ async function writeChatTheme($: EngineInterface, pal: TamaPalette): Promise<voi
 // The old file's text, when there is one and no new file yet; else null.
 async function legacyText($: EngineInterface, from: string, to: string): Promise<string | null> {
   try {
-    if (!(await $.fs.exists(from)) || (await $.fs.exists(to))) return null
+    const hasOld = await $.fs.exists(from)
+    const hasNew = await $.fs.exists(to)
+    if (!hasOld || hasNew) return null
     return await $.fs.read(from)
   } catch {
     return null
@@ -576,7 +656,8 @@ async function editClaudeSettings($: EngineInterface, change: (s: ClaudeSettings
   const dir = await claudeDir($)
   let original = ''
   let settings: ClaudeSettings = {}
-  if (await $.fs.exists(`${dir}/settings.json`)) {
+  const hasSettings = await $.fs.exists(`${dir}/settings.json`)
+  if (hasSettings) {
     original = await $.fs.read(`${dir}/settings.json`)
     if (original.trim()) {
       try {
@@ -587,14 +668,14 @@ async function editClaudeSettings($: EngineInterface, change: (s: ClaudeSettings
         return `${dir}/settings.json is not valid JSON, so tamagoxtix left it alone. Fix it (or remove the broken part) and run the command again.`
       }
     }
-    if (original && !(await $.fs.exists(`${dir}/settings.json.tamagoxtix-backup`))) {
-      await $.fs.write(`${dir}/settings.json.tamagoxtix-backup`, original)
-    }
+    const hasBackup = await $.fs.exists(`${dir}/settings.json.tamagoxtix-backup`)
+    if (original && !hasBackup) await $.fs.write(`${dir}/settings.json.tamagoxtix-backup`, original)
   }
   change(settings)
   await $.fs.write(`${dir}/settings.json`, JSON.stringify(settings, null, 2) + '\n')
   try {
-    JSON.parse(await $.fs.read(`${dir}/settings.json`))
+    const written = await $.fs.read(`${dir}/settings.json`)
+    JSON.parse(written)
   } catch {
     if (original) await $.fs.write(`${dir}/settings.json`, original)
     return `Could not write ${dir}/settings.json; it was put back as it was.`
@@ -606,10 +687,10 @@ async function readClaudeSettings($: EngineInterface): Promise<ClaudeSettings> {
   return readJson($, `${await claudeDir($)}/settings.json`, {})
 }
 
-async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
+async function setStatusline($: EngineInterface, enable: boolean): Promise<string> {
   const config = await readConfig($)
   const before = await readClaudeSettings($)
-  if (on) {
+  if (enable) {
     const script = await installStatuslineFiles($)
     const ours = { type: 'command', command: `node "${script}"`, padding: 0, refreshInterval: 30 }
     const current = JSON.stringify(before.statusLine ?? null)
@@ -634,9 +715,9 @@ async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
 
 // /config takes only the built-in themes, so the theme is set in
 // settings.json the way Omarchy sets its own; Claude Code picks it up live.
-async function setChatTheme($: EngineInterface, on: boolean): Promise<string> {
+async function setChatTheme($: EngineInterface, enable: boolean): Promise<string> {
   const pal = (await read($, palette)) ?? (await loadPalette($))
-  if (on) {
+  if (enable) {
     const before = await readClaudeSettings($)
     const current = typeof before.theme === 'string' ? before.theme : undefined
     await writeChatTheme($, pal)
@@ -807,8 +888,13 @@ export const register: Register = on => {
       if (chunk.kind === 'stop' && chunk.usage) {
         const exact = chunk.usage.output_tokens
         await update($, turn, t => (t ? { ...t, tokens: (base ?? t.tokens) + exact } : t))
-      } else if ((await $.clock.now()) - lastPush > 400) {
-        lastPush = await $.clock.now()
+      } else {
+        const now = await $.clock.now()
+        if (now - lastPush <= 400) {
+          yield chunk
+          continue
+        }
+        lastPush = now
         const estimate = Math.round(chars / 4)
         await update($, turn, t => {
           if (!t) return t
@@ -855,23 +941,21 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
     if ((e.surface !== 'terminal' && e.surface !== 'desktop')) return next(e)
-    const [pal, pet, current] = [await read($, palette), await read($, monster), await read($, turn)]
+    const pal = await read($, palette)
+    const pet = await read($, monster)
+    const current = await read($, turn)
     if (!pal || !pet) return next(e)
     const now = await $.clock.now()
+    const spinnerProps = {
+      monster: pet,
+      palette: pal,
+      mode: e.props.mode,
+      word: e.props.message ?? e.props.word,
+      startedAt: current?.startedAt ?? now,
+      tokens: current?.tokens ?? 0,
+    }
     const { Client } = $.ui.resolve(e)
-    return (
-      <Client module="./spinner.tsx"
-        key="tamagoxtix-spinner"
-        props={{
-          monster: pet,
-          palette: pal,
-          mode: e.props.mode,
-          word: e.props.message ?? e.props.word,
-          startedAt: current?.startedAt ?? now,
-          tokens: current?.tokens ?? 0,
-        }}
-      />
-    )
+    return <Client module="./spinner.tsx" key="tamagoxtix-spinner" props={spinnerProps} />
   })
 
   // ---- while you type a prompt, the monster cheers you on ----
@@ -889,38 +973,36 @@ export const register: Register = on => {
     // a survey owns the band; with under 3 rows the monster shrinks to a line
     if (e.props.hasSurvey || e.props.maxRows < 1) return next(e)
     const mode = e.props.maxRows >= 3 ? 'full' : 'compact'
-    const [pal, pet, show, since, data, windows, repo] = [
-      await read($, palette),
-      await read($, monster),
-      await read($, showPet),
-      await read($, idleSince),
-      await read($, usage),
-      await read($, limits),
-      await read($, github),
-    ]
+    const pal = await read($, palette)
+    const pet = await read($, monster)
+    const show = await read($, showPet)
+    const since = await read($, idleSince)
+    const data = await read($, usage)
+    const windows = await read($, limits)
+    const repo = await read($, github)
     if (!pal || !pet || !show) return next(e)
     const now = await $.clock.now()
+    const missingNode = await read($, nodeMissing)
+    const cheering = await read($, drafting)
+    const face = await sidebarToken($, pet, 'idle')
+    const config = await readConfig($)
+    const idleProps = {
+      monster: pet,
+      palette: pal,
+      idleSince: since || now,
+      todayCount: data?.today.tokens ?? null,
+      limits: windows,
+      week: thisWeek(data, now),
+      github: repo,
+      columns: e.props.bodyColumns,
+      nodeMissing: missingNode,
+      cheering,
+      compact: mode === 'compact',
+      face,
+      icons: String(config.icons ?? 'nerd'),
+    }
     const { Client } = $.ui.resolve(e)
-    return (
-      <Client module="./idle.tsx"
-        key="tamagoxtix-idle"
-        props={{
-          monster: pet,
-          palette: pal,
-          idleSince: since || now,
-          todayCount: data?.today.tokens ?? null,
-          limits: windows,
-          week: thisWeek(data, now),
-          github: repo,
-          columns: e.props.bodyColumns,
-          nodeMissing: await read($, nodeMissing),
-          cheering: await read($, drafting),
-          compact: mode === 'compact',
-          face: await sidebarToken($, pet, 'idle'),
-          icons: String((await readConfig($)).icons ?? 'nerd'),
-        }}
-      />
-    )
+    return <Client module="./idle.tsx" key="tamagoxtix-idle" props={idleProps} />
   })
 
   // ---- /tamagoxtix help: the commands as a card, with what is on ----
@@ -1037,7 +1119,7 @@ export const register: Register = on => {
 
     // today by hour: one bar per hour, the current one in the accent color
     const hourNow = new Date(now).getHours()
-    const hourRows = columnRows(data.today.hours.map(h => h.tokens), 3)
+    const hourRows = columnRows(data.today.hours.map(slot => slot.tokens), 3)
     const hourChart = hourRows.map(row => (
       <Text mono>
         {row.map((ch, i) => (
@@ -1045,7 +1127,7 @@ export const register: Register = on => {
         ))}
       </Text>
     ))
-    const hourLabels = data.today.hours.map(h => (h.hour % 6 === 0 ? String(h.hour) : '').padEnd(3)).join('')
+    const hourLabels = data.today.hours.map(slot => (slot.hour % 6 === 0 ? String(slot.hour) : '').padEnd(3)).join('')
 
     return (
       <Box flexDirection="column" borderStyle="round" borderColor={p.muted} paddingX={2} paddingY={0} width={width}>
@@ -1126,8 +1208,8 @@ export const register: Register = on => {
       if (!choices.includes(arg)) {
         return { text: `Unknown palette "${arg}". Try one of: ${choices.join(', ')}` }
       }
-      const next = await applyPalette($, arg)
-      return { text: `Palette: ${next.label}.` }
+      const chosen = await applyPalette($, arg)
+      return { text: `Palette: ${chosen.label}.` }
     }
 
     if (sub === 'theme') {

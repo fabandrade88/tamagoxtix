@@ -372,6 +372,24 @@ install only their own folder. Screenshots are real captures
 
 ## Changelog
 
+### 2.1.4
+
+- Clears the last blocking findings of the Claude plugin directory: no
+  variable or parameter is named `h` in the `.tsx` files (JSX compiles to
+  `h(...)`), and every `$.noun.method(...)` call stands on its own, never
+  inside parentheses, a ternary or another call; the GitHub-or-GitLab choice
+  moved to its own function, and `gh` now hands back plain JSON that the mod
+  reads itself (no `--jq` programs in the command); one `publicApi` function
+  reads both forges' public APIs and parses the JSON itself; the surface
+  modules each draw their own scene rows (no `art.tsx` import).
+- The mod's files moved up to the plugin folder (`register.tsx`, `spinner.tsx`,
+  `idle.tsx`, `lib/`), so a surface module's path reads the same from the hooks
+  module and from the plugin's root; `hooks/hooks.json` points at
+  `../register.tsx`.
+- No parameter or variable shares a name with a hook's `on` or `next`
+  (`setStatusline` and `setChatTheme` take `enable`).
+- Nothing changes in how it works.
+
 ### 2.1.3
 
 - Passes the Claude plugin directory's mod checks: every command, file path and

@@ -2,11 +2,31 @@
 // the monster naps, snacks, sips coffee, plays, reads or goes to the
 // bathroom, a new scene every 40 seconds; while you type a prompt it cheers
 // you on instead, a new cheer every 10 seconds.
-import type { ClientModule, ClientSurface } from 'claude-code'
+import type { ClientElements, ClientModule, ClientSurface } from 'claude-code'
 
 import { cheerSceneAt, gitlabFox, idleSceneAt, octocat, scene } from './lib/scenes.mjs'
-import { sceneRows } from './art.tsx'
-import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette } from '../types'
+import { slotColor } from './lib/monsters.mjs'
+import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette } from './types'
+
+type Run = { text: string; fg?: string; bg?: string }
+type SceneData = { rows: Run[][]; fx: string[]; fxSlot: string; caption: string }
+
+// Draws a scene (scenes.mjs) as Text rows (monospaced, so the desktop app lines
+// them up as a terminal does): the pixels as half blocks in the monster's
+// palette colors, then the effects column.
+function sceneRows(Text: ClientElements['Text'], monster: TamaMonster, palette: TamaPalette, data: SceneData) {
+  const color = (slot?: string) => (slot ? slotColor(monster, slot, palette) : undefined)
+  return data.rows.map((runs, i) => (
+    <Text mono>
+      {runs.map(run => (
+        <Text mono color={color(run.fg)} backgroundColor={color(run.bg)}>
+          {run.text}
+        </Text>
+      ))}
+      <Text mono color={color(data.fxSlot)}>{' ' + (data.fx[i] ?? '')}</Text>
+    </Text>
+  ))
+}
 
 export type IdleProps = {
   monster: TamaMonster
@@ -81,10 +101,10 @@ function bar(percent: number): string {
 function resetIn(iso: string | undefined, now: number): string {
   const ms = iso ? Date.parse(iso) - now : NaN
   if (!Number.isFinite(ms) || ms <= 0) return ''
-  const h = Math.floor(ms / 3_600_000)
-  const m = Math.floor((ms % 3_600_000) / 60_000)
-  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`
-  return h ? `${h}h ${m}m` : `${m}m`
+  const hrs = Math.floor(ms / 3_600_000)
+  const mins = Math.floor((ms % 3_600_000) / 60_000)
+  if (hrs >= 24) return `${Math.floor(hrs / 24)}d ${hrs % 24}h`
+  return hrs ? `${hrs}h ${mins}m` : `${mins}m`
 }
 
 const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<State>) => {
