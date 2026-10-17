@@ -35,7 +35,7 @@ const MODE_LABEL: Record<string, string> = {
   responding: 'is writing',
 }
 
-function formatTokens(n: number): string {
+function formatCount(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`
   if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k`
   return String(Math.round(n))
@@ -80,7 +80,7 @@ const Spinner: ClientModule<SpinnerProps, State> = (props, surface: ClientSurfac
   const time = cycleBar(seconds, 60)
   const money = cycleBar(props.tokens, TOKENS_PER_BAR)
   const timeLabel = formatElapsed(elapsed)
-  const moneyLabel = formatTokens(props.tokens)
+  const moneyLabel = formatCount(props.tokens)
   const width = Math.max(timeLabel.length, moneyLabel.length)
 
   const dots = '.'.repeat((Math.floor(frame / 3) % 3) + 1).padEnd(3)

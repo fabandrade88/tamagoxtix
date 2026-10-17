@@ -353,7 +353,7 @@ npm run sync                      # after editing shared/ or the version in pack
                                   # copy shared/ into both packages, and the version into
                                   # plugin.json, marketplace.json and herdr-plugin.toml
 npm test                          # everything below
-npm run test:unit                 # node --test and claude plugin test
+npm run test:unit                 # node --test, and the mod's tests (tests/mod) in a copy of claude/
 npm run test:security             # argv-only commands, known APIs and paths, no secrets
 npm run test:perf                 # frame, usage-reading and hook budgets
 ```
@@ -371,6 +371,16 @@ install only their own folder. Screenshots are real captures
 `scripts/gallery.mjs idle|work|cheer` draws the scene grids.
 
 ## Changelog
+
+### 2.1.2
+
+- Ready for the Claude plugin directory: the mod's calls are written the way
+  the directory reads them, a listing icon, and the plugin's README says
+  exactly which programs it runs, which hosts it contacts, what it reads and
+  writes, and what each hook does.
+- The mod's tests moved to `tests/mod`, out of the published plugin folder.
+- Nothing changes in how it works, except that a draft cleared with Ctrl+C keeps
+  the cheer going until the next key or the next prompt.
 
 ### 2.1.1
 

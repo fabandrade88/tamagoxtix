@@ -65,7 +65,7 @@ async function claudeDir($: EngineInterface): Promise<string> {
   return (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await home($)}/.claude`
 }
 
-async function readJson<T>($: EngineInterface, path: string, fallback: T): Promise<T> {
+async function readJson($: EngineInterface, path: string, fallback: unknown): Promise<any> {
   try {
     return JSON.parse(await $.fs.read(path)) as T
   } catch {
@@ -74,7 +74,7 @@ async function readJson<T>($: EngineInterface, path: string, fallback: T): Promi
 }
 
 async function readConfig($: EngineInterface): Promise<Config> {
-  return { palette: 'beach', sidebar: false, ...(await readJson<Config>($, await configPath($), {})) }
+  return { palette: 'beach', sidebar: false, ...(await readJson($, await configPath($), {})) }
 }
 
 async function writeConfig($: EngineInterface, patch: Config): Promise<Config> {
@@ -96,6 +96,12 @@ async function loadPalette($: EngineInterface, choice?: string): Promise<TamaPal
     } catch {}
   }
   return resolvePalette(pick, omarchy) as TamaPalette
+}
+
+// The plugin's own folder, where its scripts are.
+function pluginRoot($: EngineInterface): string {
+  const root = $.plugin.root
+  return root
 }
 
 // ---- herdr ----
@@ -133,8 +139,8 @@ async function seedKey($: EngineInterface): Promise<string> {
 // monster wears its icon's color so both read as the same critter.
 async function loadMonster($: EngineInterface): Promise<TamaMonster> {
   const key = await seedKey($)
-  const rolls = await readJson<Record<string, number>>($, await statePath($, 'rerolls.json'), {})
-  const picks = await readJson<Record<string, string>>($, await statePath($, 'icons.json'), {})
+  const rolls = await readJson($, await statePath($, 'rerolls.json'), {})
+  const picks = await readJson($, await statePath($, 'icons.json'), {})
   const icon = iconFor(key, { picks, rolls })
   const n = rolls[key] ?? 0
   const pet = makeMonster(n ? `${key}#${n}` : key) as TamaMonster
@@ -263,7 +269,7 @@ async function refreshGithub($: EngineInterface) {
   const [behind = 0, ahead = 0] = counts.split(/\s+/).map(Number)
   let version = await run($, ['git', 'describe', '--tags', '--abbrev=0'])
   if (!version) {
-    const pkg = await readJson<{ version?: string }>($, 'package.json', {})
+    const pkg = await readJson($, 'package.json', {})
     version = pkg.version ? `v${pkg.version}` : null
   }
   const local = {
@@ -296,7 +302,8 @@ async function refreshGithub($: EngineInterface) {
 async function refreshUsage($: EngineInterface) {
   let result: { exitCode: number; stdout: string } | null = null
   try {
-    result = await $.process.run(['node', `${$.plugin.root}/scripts/usage-node.mjs`, '--days', '14'], { timeoutMs: 30_000 })
+    const script = `${pluginRoot($)}/scripts/usage-node.mjs`
+    result = await $.process.run(['node', script, '--days', '14'], { timeoutMs: 30_000 })
   } catch {
     // `node` didn't start: say so where the numbers would be
     await update($, nodeMissing, () => true)
@@ -363,7 +370,7 @@ async function doctorText($: EngineInterface, columns = 80): Promise<string> {
   return lines.join('\n')
 }
 
-function formatTokens(n: number): string {
+function formatCount(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
   if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`
   if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k`
@@ -475,7 +482,7 @@ async function loadSession($: EngineInterface) {
   await update($, monster, () => pet)
   const now = Date.now()
   await update($, idleSince, () => now)
-  const saved = await readJson<{ windows?: TamaLimit[] }>($, await statePath($, 'limits.json'), {})
+  const saved = await readJson($, await statePath($, 'limits.json'), {})
   if (saved.windows?.length) await update($, limits, () => saved.windows ?? [])
   const pref = await $.store.get('showPet')
   await update($, showPet, () => pref !== false)
@@ -492,7 +499,7 @@ const STATUSLINE_FILES = ['statusline.mjs', 'palettes.mjs', 'powerline.mjs', 'fo
 async function installStatuslineFiles($: EngineInterface): Promise<string> {
   const dir = await statePath($, 'statusline')
   for (const file of STATUSLINE_FILES) {
-    await $.fs.write(`${dir}/${file}`, await $.fs.read(`${$.plugin.root}/scripts/${file}`))
+    await $.fs.write(`${dir}/${file}`, await $.fs.read(`${pluginRoot($)}/scripts/${file}`))
   }
   return `${dir}/statusline.mjs`
 }
@@ -537,7 +544,7 @@ async function editClaudeSettings($: EngineInterface, change: (s: ClaudeSettings
 }
 
 async function readClaudeSettings($: EngineInterface): Promise<ClaudeSettings> {
-  return readJson<ClaudeSettings>($, `${await claudeDir($)}/settings.json`, {})
+  return readJson($, `${await claudeDir($)}/settings.json`, {})
 }
 
 async function setStatusline($: EngineInterface, on: boolean): Promise<string> {
@@ -700,6 +707,8 @@ export const register: Register = on => {
     const started = await next(e)
     if (e.agentId) return started
     mainTurn = e.turnId
+    // the prompt was sent: no draft in the box anymore
+    await update($, drafting, () => false)
     await update($, turn, () => ({ startedAt: Date.now(), tokens: 0 }))
 
     // the icon may have changed since (a pick, a reroll, herdr spreading
@@ -794,9 +803,8 @@ export const register: Register = on => {
     if (!pal || !pet) return next(e)
     const { Client } = $.ui.resolve(e)
     return (
-      <Client
+      <Client module="./spinner.tsx"
         key="tamagoxtix-spinner"
-        module="./spinner.tsx"
         props={{
           monster: pet,
           palette: pal,
@@ -815,11 +823,6 @@ export const register: Register = on => {
     const result = await next(e)
     await setDrafting($, result?.text ?? e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end))
     return result
-  })
-
-  on('prompt.change', async ($, e, next) => {
-    await setDrafting($, e.text)
-    return next(e)
   })
 
   // ---- the idle band: the monster lives above the prompt between turns ----
@@ -841,14 +844,13 @@ export const register: Register = on => {
     if (!pal || !pet || !show) return next(e)
     const { Client } = $.ui.resolve(e)
     return (
-      <Client
+      <Client module="./idle.tsx"
         key="tamagoxtix-idle"
-        module="./idle.tsx"
         props={{
           monster: pet,
           palette: pal,
           idleSince: since || Date.now(),
-          todayTokens: data?.today.tokens ?? null,
+          todayCount: data?.today.tokens ?? null,
           limits: windows,
           week: thisWeek(data),
           github: repo,
@@ -1000,18 +1002,18 @@ export const register: Register = on => {
             <Text mono>
               <Text mono color={p.muted}>today </Text>
               <Text mono color={p.yellow} bold>
-                {formatTokens(data.today.tokens)}
+                {formatCount(data.today.tokens)}
               </Text>
               <Text mono color={p.muted}>{`   session `}</Text>
               <Text mono color={p.cyan} bold>
-                {formatTokens(data.session?.tokens ?? 0)}
+                {formatCount(data.session?.tokens ?? 0)}
               </Text>
               <Text mono color={p.muted}>{`   week `}</Text>
               <Text mono color={p.magenta} bold>
-                {formatTokens(data.week.tokens)}
+                {formatCount(data.week.tokens)}
               </Text>
             </Text>
-            <Text mono color={p.muted}>{`${formatTokens(data.today.output)} written by Claude today`}</Text>
+            <Text mono color={p.muted}>{`${formatCount(data.today.output)} written by Claude today`}</Text>
           </Box>
         </Box>
         <Text mono> </Text>
@@ -1021,7 +1023,7 @@ export const register: Register = on => {
         <Text mono> </Text>
         <Text mono>
           {title('last 14 days')}
-          <Text mono color={p.muted}>{`   max ${formatTokens(Math.max(...days.map(d => d.tokens)))}`}</Text>
+          <Text mono color={p.muted}>{`   max ${formatCount(Math.max(...days.map(d => d.tokens)))}`}</Text>
         </Text>
         {dayChart}
         <Text mono color={p.muted}>{dayLabels}</Text>
@@ -1048,7 +1050,7 @@ export const register: Register = on => {
       // the row the model reads; the card above is drawn from the same numbers
       return {
         text: data
-          ? `Token usage: today ${formatTokens(data.today.tokens)}, this 5h session ${formatTokens(data.session?.tokens ?? 0)}, this week ${formatTokens(data.week.tokens)}. Limits: 5h ${pct('five_hour') ?? '?'}%, week ${pct('seven_day') ?? '?'}%.`
+          ? `Token usage: today ${formatCount(data.today.tokens)}, this 5h session ${formatCount(data.session?.tokens ?? 0)}, this week ${formatCount(data.week.tokens)}. Limits: 5h ${pct('five_hour') ?? '?'}%, week ${pct('seven_day') ?? '?'}%.`
           : 'Token usage is not available yet.',
       }
     }
@@ -1079,7 +1081,7 @@ export const register: Register = on => {
     if (sub === 'reroll' || sub === 'icon') {
       const key = await seedKey($)
       const picksPath = await statePath($, 'icons.json')
-      const picks = await readJson<Record<string, string>>($, picksPath, {})
+      const picks = await readJson($, picksPath, {})
       if (sub === 'icon') {
         if (!arg) {
           const current = (await read($, monster))?.icon
@@ -1090,7 +1092,7 @@ export const register: Register = on => {
         picks[key] = arg
       } else {
         const rollsPath = await statePath($, 'rerolls.json')
-        const rolls = await readJson<Record<string, number>>($, rollsPath, {})
+        const rolls = await readJson($, rollsPath, {})
         rolls[key] = (rolls[key] ?? 0) + 1
         await $.fs.write(rollsPath, JSON.stringify(rolls, null, 2))
         delete picks[key]

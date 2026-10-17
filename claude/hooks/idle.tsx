@@ -12,7 +12,7 @@ export type IdleProps = {
   monster: TamaMonster
   palette: TamaPalette
   idleSince: number
-  todayTokens: number | null
+  todayCount: number | null
   /** The 5-hour and weekly windows, as Claude Code last reported them. */
   limits: TamaLimit[]
   /** Monday to Sunday of this week: tokens per day, today marked. */
@@ -56,7 +56,7 @@ const CHEERS = [
   'this is the prompt',
 ]
 
-function formatTokens(n: number): string {
+function formatCount(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`
   if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M`
   if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k`
@@ -106,8 +106,8 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
         {props.cheering ? (
           <Text mono color={palette.orange}>{` · ${CHEERS[Math.floor(now / 10_000) % CHEERS.length]}`}</Text>
         ) : null}
-        {props.todayTokens !== null && !props.nodeMissing ? (
-          <Text mono color={palette.yellow}>{` · $ ${formatTokens(props.todayTokens)} today`}</Text>
+        {props.todayCount !== null && !props.nodeMissing ? (
+          <Text mono color={palette.yellow}>{` · $ ${formatCount(props.todayCount)} today`}</Text>
         ) : null}
       </Text>
     )
@@ -226,9 +226,9 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
           <Text mono color={palette.orange}>install Node.js 18+ to see your usage · /tamagoxtix doctor</Text>
         ) : (
         <Text mono>
-          {props.todayTokens !== null && (
+          {props.todayCount !== null && (
             <Text mono>
-              <Text mono color={palette.yellow}>$ {formatTokens(props.todayTokens)}</Text>
+              <Text mono color={palette.yellow}>$ {formatCount(props.todayCount)}</Text>
               <Text mono color={palette.muted}> tokens today · </Text>
             </Text>
           )}

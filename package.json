@@ -1,14 +1,14 @@
 {
   "name": "tamagoxtix",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "type": "module",
   "description": "TamaGoxtix: a herdr plugin and a Claude Code mod with little pixel monsters, token usage charts and palettes.",
   "scripts": {
     "sync": "node scripts/sync-shared.mjs",
     "check": "node scripts/sync-shared.mjs --check && claude plugin validate claude && herdr config check",
-    "test": "node scripts/sync-shared.mjs --check && node --test tests/*.test.mjs && claude plugin test claude && node scripts/security-check.mjs && node scripts/bench.mjs",
-    "test:unit": "node --test tests/*.test.mjs && claude plugin test claude",
+    "test": "node scripts/sync-shared.mjs --check && node --test tests/*.test.mjs && node scripts/test-mod.mjs && node scripts/security-check.mjs && node scripts/bench.mjs",
+    "test:unit": "node --test tests/*.test.mjs && node scripts/test-mod.mjs",
     "test:security": "node scripts/security-check.mjs",
     "test:perf": "node scripts/bench.mjs"
   },
