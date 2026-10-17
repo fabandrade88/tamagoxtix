@@ -27,6 +27,10 @@ export type IdleProps = {
   nodeMissing: boolean
   /** You are typing a prompt: cheer scenes instead of idle ones. */
   cheering?: boolean
+  /** Under 3 rows free: one line with the monster's icon instead of the band. */
+  compact?: boolean
+  /** The monster's icon, a glyph or a symbol (icons.mjs). */
+  face?: string
 }
 
 // GitHub glyphs: octicons from a Nerd Font, or plain symbols without one.
@@ -92,6 +96,22 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
   const { monster, palette } = props
   const now = Date.now()
   const data = scene(monster, props.cheering ? cheerSceneAt(monster, now) : idleSceneAt(monster, now), frame)
+
+  // no room for the band: the monster's icon, what it is up to, and today
+  if (props.compact) {
+    return (
+      <Text mono wrap="truncate-end">
+        <Text mono color={palette.accent} bold>{`${props.face ? `${props.face} ` : ''}${monster.name}`}</Text>
+        <Text mono color={palette.fg}> {data.caption}</Text>
+        {props.cheering ? (
+          <Text mono color={palette.orange}>{` · ${CHEERS[Math.floor(now / 10_000) % CHEERS.length]}`}</Text>
+        ) : null}
+        {props.todayTokens !== null && !props.nodeMissing ? (
+          <Text mono color={palette.yellow}>{` · $ ${formatTokens(props.todayTokens)} today`}</Text>
+        ) : null}
+      </Text>
+    )
+  }
 
   // usage beside the monster: the two limit windows as bars like the
   // spinner's, then this week's days as one column each

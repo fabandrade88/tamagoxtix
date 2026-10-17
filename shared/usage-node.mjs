@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const DAY = 86_400_000;
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 export function claudeDir() {
   return process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
@@ -60,8 +60,17 @@ function* jsonlFiles(dir, since) {
   }
 }
 
-// One compact row per API response: [key, epochMs, input, output, cacheWrite, cacheRead]
-function readFileRows(path) {
+// A short stand-in for a response's message and request ids (FNV-1a, 52
+// bits, base 36): enough to count each response once, a fraction of the size.
+function shortKey(text) {
+  let h = 0xcbf29ce484222325n;
+  for (let i = 0; i < text.length; i++) h = BigInt.asUintN(64, (h ^ BigInt(text.charCodeAt(i))) * 0x100000001b3n);
+  return (h >> 12n).toString(36);
+}
+
+// One compact row per API response at or after `since`:
+// [key, epochMs, input, output, cacheWrite, cacheRead]
+function readFileRows(path, since) {
   const rows = [];
   let text;
   try {
@@ -80,8 +89,8 @@ function readFileRows(path) {
     const usage = entry?.message?.usage;
     if (entry?.type !== "assistant" || !usage) continue;
     const at = Date.parse(entry.timestamp);
-    if (!Number.isFinite(at)) continue;
-    const key = `${entry.message.id ?? ""}:${entry.requestId ?? ""}`;
+    if (!Number.isFinite(at) || at < since) continue;
+    const key = shortKey(`${entry.message.id ?? ""}:${entry.requestId ?? ""}`);
     rows.push([
       key,
       at,
@@ -148,9 +157,13 @@ export function summarize({ days = 14, now = Date.now() } = {}) {
   const rows = [];
 
   for (const file of jsonlFiles(join(claudeDir(), "projects"), since)) {
+    // the cache keeps only rows inside the window it was read for: a file read
+    // for a shorter window is read again for a longer one
     let cached = cache.files[file.path];
-    if (!cached || cached.mtimeMs !== file.mtimeMs || cached.size !== file.size) {
-      cached = { mtimeMs: file.mtimeMs, size: file.size, rows: readFileRows(file.path) };
+    if (!cached || cached.mtimeMs !== file.mtimeMs || cached.size !== file.size || cached.since > since) {
+      cached = { mtimeMs: file.mtimeMs, size: file.size, since, rows: readFileRows(file.path, since) };
+    } else if (cached.since < since) {
+      cached = { ...cached, since, rows: cached.rows.filter((row) => row[1] >= since) };
     }
     live[file.path] = cached;
     for (const row of cached.rows) {

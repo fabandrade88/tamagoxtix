@@ -16,17 +16,28 @@ GitHub or GitLab repo.
 scenes · **36** cheer scenes · **12** palettes · GitHub and GitLab · zero
 dependencies
 
-## Quick start
+## Install
 
-```
-/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix
-/tamagoxtix doctor
+In a terminal:
+
+```sh
+claude plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix
 ```
 
-The first line installs the Claude Code mod; the second checks that everything
-it needs is there. Using [herdr](https://herdr.dev)? Add
-`herdr plugin install fabandrade88/tamagoxtix/herdr` too. More in
-[Install](#install).
+That's it: open Claude Code in any folder and the monster is there. Nothing
+to choose; it works in every folder. (A session that was already open needs
+`/reload-plugins` first.)
+
+Using [herdr](https://herdr.dev)? Add its plugin too:
+
+```sh
+herdr plugin install fabandrade88/tamagoxtix/herdr
+```
+
+You need [Node.js](https://nodejs.org) 18+ and, for the icons, a
+[Nerd Font](https://www.nerdfonts.com). Not sure? Type `/tamagoxtix doctor` in
+Claude Code. Updating, removing, other ways to install:
+[Advanced install](#advanced-install).
 
 ## Contents
 
@@ -36,7 +47,7 @@ it needs is there. Using [herdr](https://herdr.dev)? Add
   - [The usage card](#the-usage-card) · [Powerline status line](#powerline-status-line) · [Palettes and the chat theme](#palettes-and-the-chat-theme)
   - [Commands](#commands) · [Where it works](#where-it-works)
 - [herdr](#herdr)
-- [Install](#install) · [What it touches](#what-it-touches) · [Troubleshooting](#troubleshooting)
+- [Install](#install) · [Advanced install](#advanced-install) · [What it touches](#what-it-touches) · [Troubleshooting](#troubleshooting)
 - [Development](#development) · [Changelog](#changelog)
 
 ## Two pieces
@@ -114,7 +125,9 @@ first, then usage):
   changed files, version, open issues and pull/merge requests. Uses `gh` or
   `glab` when signed in, the public API otherwise.
 
-`/tamagoxtix pet off` hides the band; `on` brings it back.
+On a short pane (under 3 free rows) the band shrinks to a single line: the
+monster's icon, what it is up to and today's tokens. `/tamagoxtix pet off`
+hides the band; `on` brings it back.
 
 ### The usage card
 
@@ -160,7 +173,7 @@ goes back to your theme.
 | --- | --- |
 | `/tamagoxtix` | The usage card |
 | `/tamagoxtix help` | Every command, and which ones are on |
-| `/tamagoxtix doctor` | Check Node.js, git, gh, glab and the font, with how to install what's missing |
+| `/tamagoxtix doctor` | Check Node.js, git, gh, glab and the font, with how to install what's missing; what the band has room for |
 | `/tamagoxtix palette [name]` | List the palettes, or switch |
 | `/tamagoxtix theme on` / `off` | Color the chat with the palette |
 | `/tamagoxtix statusline on` / `off` | The powerline status line |
@@ -235,7 +248,7 @@ description = "token usage"
 
 ---
 
-## Install
+## Advanced install
 
 **Requirements:** [Node.js](https://nodejs.org) 18+; Claude Code 2.1.300+ for the
 mod; [herdr](https://herdr.dev) 0.9.0+ for the plugin; a
@@ -251,10 +264,19 @@ early-access API that can change between Claude Code releases.
 
 | | |
 | --- | --- |
-| Install | `/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix` (or `claude plugin install …` from a shell) |
+| Install from a shell | `claude plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix` (every folder) |
+| Install inside Claude Code | `/plugin install tamagoxtix --marketplace fabandrade88/tamagoxtix`, pick **user** when asked, then `/reload-plugins` |
 | Update | `claude plugin update tamagoxtix`, then `/reload-plugins` |
-| Remove | `/tamagoxtix statusline off`, `/tamagoxtix theme off`, then `/plugin uninstall tamagoxtix` |
+| Remove | `/tamagoxtix statusline off`, `/tamagoxtix theme off`, then `claude plugin uninstall tamagoxtix` |
 | Without a marketplace | clone the repo and run `claude --plugin-dir ./tamagoxtix/claude` |
+
+- **Scopes**: `user` (the shell command's default) works in every folder;
+  `project` and `local` only in the folder you installed from, so the monster
+  seems to vanish everywhere else.
+- **Installed twice?** `claude plugin list` shows each install with its scope.
+  Keep the `user` one and, from the folder the other was installed in, run
+  `claude plugin uninstall tamagoxtix --scope project` (or `--scope local`).
+- **`0 hooks`** in `/reload-plugins` is normal: that count leaves out mods.
 
 ### herdr plugin
 
@@ -270,7 +292,7 @@ TamaGoxtix is tamaclaude's new name (2.0). Install TamaGoxtix as above, then
 remove tamaclaude; your palette, monster and toggles carry over on their own:
 
 ```
-/plugin uninstall tamaclaude
+claude plugin uninstall tamaclaude
 herdr plugin action invoke tamaclaude.theme-uninstall   # before removing it from herdr
 herdr plugin uninstall tamaclaude
 ```
@@ -292,6 +314,24 @@ herdr plugin uninstall tamaclaude
 
 ## Troubleshooting
 
+### The monster doesn't show up
+
+1. **Does `/tamagoxtix` exist?** Type it. If Claude Code doesn't know the
+   command, the mod isn't loaded in this session: run `/reload-plugins`.
+2. **Is it enabled for you?** `claude plugin list` should show
+   `tamagoxtix@tamagoxtix`, `Scope: user`, `✔ enabled`. A `project` or `local`
+   scope only works in the folder it was installed from (see
+   [Advanced install](#claude-code-mod)).
+3. **Still nothing after reopening?** Run `claude --debug`, then look for
+   `tamagoxtix` in the debug log: a hook that was skipped says why there.
+
+The band above the prompt needs 3 free rows. With 1 or 2 (a short herdr pane,
+a long draft) it shrinks to one line, and it steps aside while Claude works or
+a survey is shown. `/tamagoxtix doctor` explains this and says which columns
+fit your terminal's width.
+
+### Other problems
+
 - **Something new is missing, or a command looks old**: the session runs the
   version it loaded; run `/reload-plugins`.
 - **Squares instead of icons or arrows**: your terminal font has no Nerd Font
@@ -309,7 +349,9 @@ herdr plugin uninstall tamaclaude
 ```sh
 claude --plugin-dir ./claude      # run the mod from this checkout
 herdr plugin link ./herdr         # run the herdr plugin from this checkout
-npm run sync                      # after editing shared/, copy it into both packages
+npm run sync                      # after editing shared/ or the version in package.json:
+                                  # copy shared/ into both packages, and the version into
+                                  # plugin.json, marketplace.json and herdr-plugin.toml
 npm test                          # everything below
 npm run test:unit                 # node --test and claude plugin test
 npm run test:security             # argv-only commands, known APIs and paths, no secrets
@@ -329,6 +371,24 @@ install only their own folder. Screenshots are real captures
 `scripts/gallery.mjs idle|work|cheer` draws the scene grids.
 
 ## Changelog
+
+### 2.1.1
+
+- **Install in one line**: `claude plugin install tamagoxtix --marketplace
+  fabandrade88/tamagoxtix` from a shell, nothing to choose. Everything else
+  (scopes, updating, removing, a second install, `0 hooks`) is in Advanced
+  install, and a checklist covers the monster not showing up.
+- **One-line band**: with under 3 free rows above the prompt (a short herdr
+  pane, a long draft) the monster shrinks to one line instead of vanishing.
+- **`/tamagoxtix doctor`** explains when the band hides or shrinks and which
+  columns fit your terminal's width.
+- **Lighter**: git is asked once per folder that has no repository, not on every
+  turn (again after 10 minutes); the Omarchy theme file is read only for the
+  `omarchy` palette and only where it exists; herdr is asked for the monster's
+  seed once per session; the usage cache keeps only the last 14 days, with
+  shorter keys (less than half the size).
+- `npm run sync` carries the version from `package.json` into every manifest,
+  and `npm test` fails when one is out of step.
 
 ### 2.1.0
 

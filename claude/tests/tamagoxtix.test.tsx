@@ -264,6 +264,51 @@ describe('tamagoxtix', () => {
     expect(result.text).toContain('/tamagoxtix icons plain')
   })
 
+  test('with under 3 rows the band shrinks to one line, and doctor says why', async ($, on) => {
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    await $.session.start(START)
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount({
+        plugin: 'tamagoxtix',
+        surface,
+        component: 'AbovePrompt',
+        props: { hasSurvey: false, isWorking: false, maxRows: 2, bodyColumns: 100 } as never,
+      })
+      await ui.advance(320)
+      expect(await ui.find({ in: 'tamagoxtix-idle', type: 'Text', text: /waiting for you/ })).toBeUndefined()
+      expect(await ui.find({ in: 'tamagoxtix-idle', type: 'Text', text: /^ [a-z]/ })).toBeDefined()
+      await ui.unmount()
+    }
+    const result = await $.command.run({ command: 'tamagoxtix', args: 'doctor', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+    expect(result.text).toContain('Monster band: on')
+    expect(result.text).toContain('100 columns, room for scene only')
+    expect(result.text).toContain('shrinks to one line')
+  })
+
+  test('outside a repository git is asked once, not on every turn', async ($, on) => {
+    let remotes = 0
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('session.cwd', () => ({ value: '/tmp/not-a-repo' }))
+    on('store.get', () => ({ value: undefined }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    on('process.run', ($, e) => {
+      if (e.argv[0] === 'git') {
+        remotes++
+        return { value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } }
+      }
+      throw new Error('ENOENT')
+    })
+    await $.session.start(START)
+    await $.session.start(START)
+    await $.session.start(START)
+    expect(remotes).toBe(1)
+  })
+
   test('without node the idle band says how to get the usage numbers', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })

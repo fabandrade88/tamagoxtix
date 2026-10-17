@@ -24,6 +24,11 @@ const showPet = atom({ plugin: 'tamagoxtix', key: 'showPet' } as const, true)
 const github = atom({ plugin: 'tamagoxtix', key: 'github' } as const, null)
 const nodeMissing = atom({ plugin: 'tamagoxtix', key: 'nodeMissing' } as const, false)
 const drafting = atom({ plugin: 'tamagoxtix', key: 'drafting' } as const, false)
+// The folder last found to hold no repository (or no remote), and when: git
+// is not asked again there for a while.
+const noRepo = atom({ plugin: 'tamagoxtix', key: 'noRepo' } as const, null)
+// The agent session herdr recorded for this pane, once it has one.
+const herdrSeed = atom({ plugin: 'tamagoxtix', key: 'herdrSeed' } as const, null)
 
 type Config = { palette?: string; sidebar?: boolean; [key: string]: unknown }
 
@@ -78,12 +83,19 @@ async function writeConfig($: EngineInterface, patch: Config): Promise<Config> {
   return next
 }
 
+// Omarchy's colors are read only for the `omarchy` palette (or no choice
+// yet), and only where the file exists: elsewhere, macOS and Windows
+// included, nothing is read.
 async function loadPalette($: EngineInterface, choice?: string): Promise<TamaPalette> {
+  const pick = choice ?? (await readConfig($)).palette
   let omarchy: string | undefined
-  try {
-    omarchy = await $.fs.read(`${await home($)}/${OMARCHY_COLORS_PATH}`)
-  } catch {}
-  return resolvePalette(choice ?? (await readConfig($)).palette, omarchy) as TamaPalette
+  if (pick === undefined || pick === 'omarchy') {
+    const path = `${await home($)}/${OMARCHY_COLORS_PATH}`
+    try {
+      if (await $.fs.exists(path)) omarchy = await $.fs.read(path)
+    } catch {}
+  }
+  return resolvePalette(pick, omarchy) as TamaPalette
 }
 
 // ---- herdr ----
@@ -98,13 +110,21 @@ async function herdr($: EngineInterface, args: string[]) {
 
 // The same seed the herdr plugin uses: the agent session herdr recorded for
 // the pane (this Claude session), else the session id.
+// Asked of herdr once per session: kept once herdr has recorded one.
 async function seedKey($: EngineInterface): Promise<string> {
   const pane = await herdrPane($)
   if (pane) {
+    const known = await read($, herdrSeed)
+    if (known?.pane === pane) return known.key
     try {
       const { stdout } = await herdr($, ['pane', 'get', pane])
-      return JSON.parse(stdout)?.result?.pane?.agent_session?.value ?? pane
+      const key = JSON.parse(stdout)?.result?.pane?.agent_session?.value
+      if (typeof key === 'string' && key) {
+        await update($, herdrSeed, () => ({ pane, key }))
+        return key
+      }
     } catch {}
+    return pane
   }
   return $.session.id()
 }
@@ -219,13 +239,23 @@ async function fetchGitlab($: EngineInterface, host: string, path: string, branc
 }
 
 // Local facts from git every time (cheap); the forge's part (issues, pull or
-// merge requests, stars, CI) at most every ten minutes.
+// merge requests, stars, CI) at most every ten minutes. A folder with no
+// repository is asked again only after ten minutes (or in another folder).
 async function refreshGithub($: EngineInterface) {
+  let cwd = ''
+  try {
+    cwd = await $.session.cwd()
+  } catch {}
+  const skip = await read($, noRepo)
+  if (skip?.cwd === cwd && Date.now() - skip.at < GITHUB_TTL) return
   const parsed = parseRemote(await run($, ['git', 'remote', 'get-url', 'origin']))
   if (!parsed) {
+    const at = Date.now()
+    await update($, noRepo, () => ({ cwd, at }))
     await update($, github, () => null)
     return
   }
+  if (skip) await update($, noRepo, () => null)
   const repo = parsed.path
   const branch = (await run($, ['git', 'rev-parse', '--abbrev-ref', 'HEAD'])) ?? '?'
   const status = (await run($, ['git', 'status', '--porcelain'])) ?? ''
@@ -296,7 +326,11 @@ const CHECKS: Check[] = [
   { name: 'glab (GitLab CLI)', argv: ['glab', '--version'], required: false, why: 'pipelines, merge requests and private GitLab projects', install: 'https://gitlab.com/gitlab-org/cli' },
 ]
 
-async function doctorText($: EngineInterface): Promise<string> {
+// What the band shows at a width: the scene and caption, then usage, then
+// the repo column (idle.tsx WIDTH).
+const BAND_WIDTH = { usage: 28 + 46 + 40, repo: 28 + 46 + 40 + 46 }
+
+async function doctorText($: EngineInterface, columns = 80): Promise<string> {
   const lines = ['TamaGoxtix doctor', '']
   for (const check of CHECKS) {
     let found = false
@@ -310,6 +344,15 @@ async function doctorText($: EngineInterface): Promise<string> {
     lines.push(`${mark} ${check.name}${found && version && check.argv[1] === '--version' ? `  (${version})` : ''}`)
     if (!found) lines.push(`    needed for ${check.why}${check.required ? '' : ' (optional)'}`, `    install: ${check.install}`)
   }
+  const pet = await read($, showPet)
+  const fits = columns >= BAND_WIDTH.repo ? 'scene, usage and repo' : columns >= BAND_WIDTH.usage ? 'scene and usage (the repo column needs 160)' : 'scene only (usage needs 114 columns, the repo column 160)'
+  lines.push(
+    '',
+    pet ? 'Monster band: on (/tamagoxtix pet off hides it)' : '✖ Monster band: hidden by /tamagoxtix pet off (pet on brings it back)',
+    `    terminal: ${columns} columns, room for ${fits}`,
+    '    the full band needs 3 free rows above the prompt; with 1 or 2 it shrinks to one line,',
+    '    and it steps aside while Claude works or a survey is shown',
+  )
   const icons = String((await readConfig($)).icons ?? 'nerd')
   lines.push(
     '',
@@ -782,7 +825,10 @@ export const register: Register = on => {
   // ---- the idle band: the monster lives above the prompt between turns ----
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if ((e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.hasSurvey || e.props.isWorking || e.props.maxRows < 3) return next(e)
+    if ((e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.isWorking) return next(e)
+    // a survey owns the band; with under 3 rows the monster shrinks to a line
+    if (e.props.hasSurvey || e.props.maxRows < 1) return next(e)
+    const mode = e.props.maxRows >= 3 ? 'full' : 'compact'
     const [pal, pet, show, since, data, windows, repo] = [
       await read($, palette),
       await read($, monster),
@@ -809,6 +855,8 @@ export const register: Register = on => {
           columns: e.props.bodyColumns,
           nodeMissing: await read($, nodeMissing),
           cheering: await read($, drafting),
+          compact: mode === 'compact',
+          face: await sidebarToken($, pet, 'idle'),
           icons: String((await readConfig($)).icons ?? 'nerd'),
         }}
       />
@@ -1083,7 +1131,7 @@ export const register: Register = on => {
       }
     }
 
-    if (sub === 'doctor') return { text: await doctorText($) }
+    if (sub === 'doctor') return { text: await doctorText($, e.presentation?.columns) }
 
     return { text: `Unknown: ${sub}.\n\n${await helpText($)}` }
   })

@@ -73,6 +73,10 @@ declare module 'claude-code' {
       nodeMissing: boolean
       /** A prompt is being typed: the band cheers instead of idling. */
       drafting: boolean
+      /** The folder last found without a repository, and when. */
+      noRepo: { cwd: string; at: number } | null
+      /** The agent session herdr recorded for the pane: the monster's seed. */
+      herdrSeed: { pane: string; key: string } | null
     }
   }
 }
