@@ -5,7 +5,7 @@
 import type { ClientModule, ClientSurface } from 'claude-code'
 
 import { cheerSceneAt, gitlabFox, idleSceneAt, octocat, scene } from './lib/scenes.mjs'
-import { sceneRows } from './art'
+import { sceneRows } from './art.tsx'
 import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette } from '../types'
 
 export type IdleProps = {

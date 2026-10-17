@@ -372,6 +372,19 @@ install only their own folder. Screenshots are real captures
 
 ## Changelog
 
+### 2.1.3
+
+- Passes the Claude plugin directory's mod checks: every command, file path and
+  web address is written out in full at its call, no helper is handed `$` from
+  inside another function, the surface modules import `./art.tsx` by its full
+  name, the time comes from `$.clock.now()` and GitLab paths are encoded
+  without the browser's `encodeURIComponent`.
+- The plugin's README names each file it writes, says plainly that it edits
+  Claude Code's settings file (only on `/tamagoxtix statusline` and `theme`),
+  lists the environment variables it reads, and says that `gh` and `glab` use
+  their own sign-in.
+- Fixed a type error in `readJson`. Nothing changes in how it works.
+
 ### 2.1.2
 
 - Ready for the Claude plugin directory: the mod's calls are written the way

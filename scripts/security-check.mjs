@@ -36,9 +36,14 @@ const RULES = [
 const ALLOWED_URLS = [/^`https:\/\/api\.github\.com\/repos\/\$\{path\}`$/, /^`https:\/\/\$\{host\}\/api\/v4\/\$\{endpoint\}(&per_page=1)?`$/];
 // Files the code writes, by the expression it writes to.
 const ALLOWED_WRITES = [
-  /statePath\(\$, '(limits|rerolls|icons)\.json'\)/,
-  /rollsPath|picksPath|configPath\(\$\)|path, /,
-  /claudeDir\(\$\)\}\/themes\/tamagoxtix\.json/,
+  // the Claude Code mod: every path written out at its $.fs.write
+  /^`\$\{base\}\/tamagoxtix\/config\.json`/,
+  /^`\$\{state\}\/tamagoxtix\/(limits|rerolls|icons)\.json`/,
+  /^`\$\{dir\}\/(statusline|palettes|powerline|forge)\.mjs`/,
+  /^`\$\{dir\}\/themes\/tamagoxtix\.json`/,
+  /^`\$\{dir\}\/settings\.json(\.tamagoxtix-backup)?`/,
+  // the herdr plugin and the Node scripts
+  /path, /,
   /join\(stateDir\(\), "(usage-cache|limits|rerolls|icons)\.json"\)|rerollPath\(\)|picksPath\(\)|configPath\(\)|tmp|dest|path, (next|text|current|base)/,
   /join\(dir, "tamagoxtix\.json"\)/,
   /OMARCHY_HOOK, HOOK_SCRIPT/,

@@ -12,8 +12,6 @@ import {
 } from './lib/palettes.mjs'
 import type { TamaGithub, TamaLimit, TamaMonster, TamaPalette, TamaUsage } from '../types'
 
-const HERDR_SOURCE = 'tamagoxtix'
-
 const palette = atom({ plugin: 'tamagoxtix', key: 'palette' } as const, null)
 const monster = atom({ plugin: 'tamagoxtix', key: 'monster' } as const, null)
 const turn = atom({ plugin: 'tamagoxtix', key: 'turn' } as const, null)
@@ -51,35 +49,40 @@ async function home($: EngineInterface): Promise<string> {
   return (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? '.'
 }
 
-async function configPath($: EngineInterface): Promise<string> {
-  const base = (await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`
-  return `${base}/tamagoxtix/config.json`
+// The folders it reads and writes. Every write names its file in full at the
+// call (`${base}/tamagoxtix/config.json`), so what it writes reads off the source.
+
+// $XDG_CONFIG_HOME, else ~/.config
+async function configBase($: EngineInterface): Promise<string> {
+  return (await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`
 }
 
-async function statePath($: EngineInterface, file: string): Promise<string> {
-  const base = (await $.env.get('XDG_STATE_HOME')) ?? `${await home($)}/.local/state`
-  return `${base}/tamagoxtix/${file}`
+// $XDG_STATE_HOME, else ~/.local/state
+async function stateBase($: EngineInterface): Promise<string> {
+  return (await $.env.get('XDG_STATE_HOME')) ?? `${await home($)}/.local/state`
 }
 
+// Claude Code's own folder: $CLAUDE_CONFIG_DIR, else ~/.claude
 async function claudeDir($: EngineInterface): Promise<string> {
   return (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await home($)}/.claude`
 }
 
 async function readJson($: EngineInterface, path: string, fallback: unknown): Promise<any> {
   try {
-    return JSON.parse(await $.fs.read(path)) as T
+    return JSON.parse(await $.fs.read(path))
   } catch {
     return fallback
   }
 }
 
 async function readConfig($: EngineInterface): Promise<Config> {
-  return { palette: 'beach', sidebar: false, ...(await readJson($, await configPath($), {})) }
+  return { palette: 'beach', sidebar: false, ...(await readJson($, `${await configBase($)}/tamagoxtix/config.json`, {})) }
 }
 
 async function writeConfig($: EngineInterface, patch: Config): Promise<Config> {
   const next = { ...(await readConfig($)), ...patch }
-  await $.fs.write(await configPath($), JSON.stringify(next, null, 2) + '\n')
+  const base = await configBase($)
+  await $.fs.write(`${base}/tamagoxtix/config.json`, JSON.stringify(next, null, 2) + '\n')
   return next
 }
 
@@ -98,10 +101,19 @@ async function loadPalette($: EngineInterface, choice?: string): Promise<TamaPal
   return resolvePalette(pick, omarchy) as TamaPalette
 }
 
-// The plugin's own folder, where its scripts are.
-function pluginRoot($: EngineInterface): string {
-  const root = $.plugin.root
-  return root
+// ---- running programs ----
+
+// What a program printed, or null when it failed or was not there. Each
+// caller writes the whole command at its own `$.process.run` call.
+type RunResult = { exitCode: number; stdout: string; stderr?: string }
+
+async function output(pending: Promise<RunResult>): Promise<string | null> {
+  try {
+    const { exitCode, stdout } = await pending
+    return exitCode === 0 ? stdout.trim() : null
+  } catch {
+    return null
+  }
 }
 
 // ---- herdr ----
@@ -110,8 +122,20 @@ async function herdrPane($: EngineInterface): Promise<string | undefined> {
   return $.env.get('HERDR_PANE_ID')
 }
 
-async function herdr($: EngineInterface, args: string[]) {
-  return $.process.run(['herdr', ...args], { timeoutMs: 5000 })
+// Asks herdr to redraw the tamagoxtix sidebar and look (inside herdr only).
+async function refreshHerdr($: EngineInterface): Promise<void> {
+  if (!(await herdrPane($))) return
+  try {
+    await $.process.run(['herdr', 'plugin', 'action', 'invoke', 'tamagoxtix.sidebar-refresh'], { timeoutMs: 5000 })
+    await $.process.run(['herdr', 'plugin', 'action', 'invoke', 'tamagoxtix.theme-refresh'], { timeoutMs: 5000 })
+  } catch {}
+}
+
+// Sends herdr's sidebar the monster's face for this pane.
+async function reportFace($: EngineInterface, pane: string, token: string): Promise<void> {
+  try {
+    await $.process.run(['herdr', 'pane', 'report-metadata', pane, '--source', 'tamagoxtix', '--token', `monster=${token}`], { timeoutMs: 5000 })
+  } catch {}
 }
 
 // The same seed the herdr plugin uses: the agent session herdr recorded for
@@ -123,7 +147,7 @@ async function seedKey($: EngineInterface): Promise<string> {
     const known = await read($, herdrSeed)
     if (known?.pane === pane) return known.key
     try {
-      const { stdout } = await herdr($, ['pane', 'get', pane])
+      const { stdout } = await $.process.run(['herdr', 'pane', 'get', pane], { timeoutMs: 5000 })
       const key = JSON.parse(stdout)?.result?.pane?.agent_session?.value
       if (typeof key === 'string' && key) {
         await update($, herdrSeed, () => ({ pane, key }))
@@ -139,8 +163,9 @@ async function seedKey($: EngineInterface): Promise<string> {
 // monster wears its icon's color so both read as the same critter.
 async function loadMonster($: EngineInterface): Promise<TamaMonster> {
   const key = await seedKey($)
-  const rolls = await readJson($, await statePath($, 'rerolls.json'), {})
-  const picks = await readJson($, await statePath($, 'icons.json'), {})
+  const state = await stateBase($)
+  const rolls = await readJson($, `${state}/tamagoxtix/rerolls.json`, {})
+  const picks = await readJson($, `${state}/tamagoxtix/icons.json`, {})
   const icon = iconFor(key, { picks, rolls })
   const n = rolls[key] ?? 0
   const pet = makeMonster(n ? `${key}#${n}` : key) as TamaMonster
@@ -156,31 +181,30 @@ async function sidebarToken($: EngineInterface, pet: TamaMonster, state: string,
 async function paintSidebar($: EngineInterface, pet: TamaMonster, state: string) {
   const pane = await herdrPane($)
   if (!pane || (await readConfig($)).sidebar !== true) return
-  try {
-    const token = await sidebarToken($, pet, state)
-    await herdr($, ['pane', 'report-metadata', pane, '--source', HERDR_SOURCE, '--token', `monster=${token}`])
-  } catch {}
+  await reportFace($, pane, await sidebarToken($, pet, state))
 }
 
 // ---- the project's GitHub repository ----
 
 const GITHUB_TTL = 10 * 60_000
+const RUN = { timeoutMs: 10_000 }
 
-async function run($: EngineInterface, argv: string[]): Promise<string | null> {
-  try {
-    const { exitCode, stdout } = await $.process.run(argv, { timeoutMs: 10_000 })
-    return exitCode === 0 ? stdout.trim() : null
-  } catch {
-    return null
+// A URL path segment: what encodeURIComponent gives, without the global.
+function encodeSegment(text: string): string {
+  let out = ''
+  for (const byte of new TextEncoder().encode(text)) {
+    const ch = String.fromCharCode(byte)
+    out += /[A-Za-z0-9\-_.~]/.test(ch) ? ch : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`
   }
+  return out
 }
 
 type Remote = Pick<TamaGithub, 'issues' | 'prs' | 'stars' | 'ci'>
 
 async function fetchGithub($: EngineInterface, path: string, branch: string): Promise<Remote> {
   const remote: Remote = { issues: null, prs: null, stars: null, ci: null }
-  const info = await run($, ['gh', 'api', `repos/${path}`, '--jq', '[.open_issues_count, .stargazers_count] | @tsv'])
-  const prs = await run($, ['gh', 'pr', 'list', '-R', path, '--state', 'open', '--limit', '100', '--json', 'number', '--jq', 'length'])
+  const info = await output($.process.run(['gh', 'api', `repos/${path}`, '--jq', '[.open_issues_count, .stargazers_count] | @tsv'], RUN))
+  const prs = await output($.process.run(['gh', 'pr', 'list', '-R', path, '--state', 'open', '--limit', '100', '--json', 'number', '--jq', 'length'], RUN))
   if (info) {
     const [open = 0, stars = 0] = info.split('\t').map(Number)
     remote.prs = prs === null ? null : Number(prs)
@@ -197,7 +221,7 @@ async function fetchGithub($: EngineInterface, path: string, branch: string): Pr
       }
     } catch {}
   }
-  const runs = await run($, ['gh', 'run', 'list', '-R', path, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\\(.status) \\(.conclusion)"'])
+  const runs = await output($.process.run(['gh', 'run', 'list', '-R', path, '--branch', branch, '--limit', '1', '--json', 'status,conclusion', '--jq', '.[0] | "\\(.status) \\(.conclusion)"'], RUN))
   if (runs && !runs.startsWith('null')) {
     const [state, conclusion] = runs.split(' ')
     remote.ci = state !== 'completed' ? 'pending' : conclusion === 'success' ? 'success' : 'failure'
@@ -205,40 +229,45 @@ async function fetchGithub($: EngineInterface, path: string, branch: string): Pr
   return remote
 }
 
+// One GitLab API read: through glab when it is installed and signed in, else
+// the instance's public API, https://<host>/api/v4/<endpoint> (public
+// projects only, no credentials sent).
+async function gitlabGet($: EngineInterface, host: string, endpoint: string): Promise<unknown> {
+  const viaGlab = await output($.process.run(['glab', 'api', '--hostname', host, endpoint], RUN))
+  if (viaGlab) {
+    try {
+      return JSON.parse(viaGlab)
+    } catch {}
+  }
+  try {
+    const res = await $.http.fetch(`https://${host}/api/v4/${endpoint}`)
+    return res.ok ? JSON.parse(res.text) : null
+  } catch {
+    return null
+  }
+}
+
+// How many items a GitLab list has: its x-total header, else the list itself.
+async function gitlabCount($: EngineInterface, host: string, endpoint: string): Promise<number | null> {
+  try {
+    const res = await $.http.fetch(`https://${host}/api/v4/${endpoint}&per_page=1`)
+    const total = Object.entries(res.headers).find(([k]) => k.toLowerCase() === 'x-total')?.[1]
+    if (res.ok && total !== undefined) return Number(total)
+  } catch {}
+  const list = await gitlabGet($, host, `${endpoint}&per_page=100`)
+  return Array.isArray(list) ? list.length : null
+}
+
 // GitLab through glab when it is installed and signed in, else the
 // instance's public API (public projects only).
 async function fetchGitlab($: EngineInterface, host: string, path: string, branch: string): Promise<Remote> {
   const remote: Remote = { issues: null, prs: null, stars: null, ci: null }
-  const id = encodeURIComponent(path)
-  const get = async (endpoint: string): Promise<unknown> => {
-    const viaGlab = await run($, ['glab', 'api', '--hostname', host, endpoint])
-    if (viaGlab) {
-      try {
-        return JSON.parse(viaGlab)
-      } catch {}
-    }
-    try {
-      const res = await $.http.fetch(`https://${host}/api/v4/${endpoint}`)
-      return res.ok ? JSON.parse(res.text) : null
-    } catch {
-      return null
-    }
-  }
-  // GitLab counts a list in its x-total header
-  const count = async (endpoint: string): Promise<number | null> => {
-    try {
-      const res = await $.http.fetch(`https://${host}/api/v4/${endpoint}&per_page=1`)
-      const total = Object.entries(res.headers).find(([k]) => k.toLowerCase() === 'x-total')?.[1]
-      if (res.ok && total !== undefined) return Number(total)
-    } catch {}
-    const list = await get(`${endpoint}&per_page=100`)
-    return Array.isArray(list) ? list.length : null
-  }
-  const project = (await get(`projects/${id}`)) as { star_count?: number; open_issues_count?: number } | null
+  const id = encodeSegment(path)
+  const project = (await gitlabGet($, host, `projects/${id}`)) as { star_count?: number; open_issues_count?: number } | null
   if (project) remote.stars = project.star_count ?? null
-  remote.issues = project?.open_issues_count ?? (await count(`projects/${id}/issues?state=opened`))
-  remote.prs = await count(`projects/${id}/merge_requests?state=opened`)
-  const pipelines = await get(`projects/${id}/pipelines?ref=${encodeURIComponent(branch)}&per_page=1`)
+  remote.issues = project?.open_issues_count ?? (await gitlabCount($, host, `projects/${id}/issues?state=opened`))
+  remote.prs = await gitlabCount($, host, `projects/${id}/merge_requests?state=opened`)
+  const pipelines = await gitlabGet($, host, `projects/${id}/pipelines?ref=${encodeSegment(branch)}&per_page=1`)
   const status = Array.isArray(pipelines) ? (pipelines[0] as { status?: string } | undefined)?.status : undefined
   if (status) remote.ci = status === 'success' ? 'success' : status === 'failed' || status === 'canceled' ? 'failure' : 'pending'
   return remote
@@ -253,21 +282,21 @@ async function refreshGithub($: EngineInterface) {
     cwd = await $.session.cwd()
   } catch {}
   const skip = await read($, noRepo)
-  if (skip?.cwd === cwd && Date.now() - skip.at < GITHUB_TTL) return
-  const parsed = parseRemote(await run($, ['git', 'remote', 'get-url', 'origin']))
+  const now = await $.clock.now()
+  if (skip?.cwd === cwd && now - skip.at < GITHUB_TTL) return
+  const parsed = parseRemote(await output($.process.run(['git', 'remote', 'get-url', 'origin'], RUN)))
   if (!parsed) {
-    const at = Date.now()
-    await update($, noRepo, () => ({ cwd, at }))
+    await update($, noRepo, () => ({ cwd, at: now }))
     await update($, github, () => null)
     return
   }
   if (skip) await update($, noRepo, () => null)
   const repo = parsed.path
-  const branch = (await run($, ['git', 'rev-parse', '--abbrev-ref', 'HEAD'])) ?? '?'
-  const status = (await run($, ['git', 'status', '--porcelain'])) ?? ''
-  const counts = (await run($, ['git', 'rev-list', '--left-right', '--count', '@{u}...HEAD'])) ?? ''
+  const branch = (await output($.process.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], RUN))) ?? '?'
+  const status = (await output($.process.run(['git', 'status', '--porcelain'], RUN))) ?? ''
+  const counts = (await output($.process.run(['git', 'rev-list', '--left-right', '--count', '@{u}...HEAD'], RUN))) ?? ''
   const [behind = 0, ahead = 0] = counts.split(/\s+/).map(Number)
-  let version = await run($, ['git', 'describe', '--tags', '--abbrev=0'])
+  let version = await output($.process.run(['git', 'describe', '--tags', '--abbrev=0'], RUN))
   if (!version) {
     const pkg = await readJson($, 'package.json', {})
     version = pkg.version ? `v${pkg.version}` : null
@@ -283,7 +312,7 @@ async function refreshGithub($: EngineInterface) {
   }
 
   const previous = await read($, github)
-  const fresh = previous?.repo === repo && Date.now() - previous.fetchedAt < GITHUB_TTL
+  const fresh = previous?.repo === repo && now - previous.fetchedAt < GITHUB_TTL
   const remote: Remote & { fetchedAt: number } =
     fresh && previous
       ? { issues: previous.issues, prs: previous.prs, stars: previous.stars, ci: previous.ci, fetchedAt: previous.fetchedAt }
@@ -291,7 +320,7 @@ async function refreshGithub($: EngineInterface) {
           ...(parsed.forge === 'github'
             ? await fetchGithub($, repo, branch)
             : await fetchGitlab($, parsed.host, repo, branch)),
-          fetchedAt: Date.now(),
+          fetchedAt: now,
         }
   const next: TamaGithub = { ...local, ...remote }
   await update($, github, () => next)
@@ -302,8 +331,7 @@ async function refreshGithub($: EngineInterface) {
 async function refreshUsage($: EngineInterface) {
   let result: { exitCode: number; stdout: string } | null = null
   try {
-    const script = `${pluginRoot($)}/scripts/usage-node.mjs`
-    result = await $.process.run(['node', script, '--days', '14'], { timeoutMs: 30_000 })
+    result = await $.process.run(['node', `${$.plugin.root}/scripts/usage-node.mjs`, '--days', '14'], { timeoutMs: 30_000 })
   } catch {
     // `node` didn't start: say so where the numbers would be
     await update($, nodeMissing, () => true)
@@ -317,21 +345,46 @@ async function refreshUsage($: EngineInterface) {
 
 // ---- /tamagoxtix doctor: what TamaGoxtix needs, and what is missing ----
 
-type Check = { name: string; argv: string[]; required: boolean; why: string; install: string; ok?: (out: string) => boolean }
+type Check = { name: string; showVersion: boolean; required: boolean; why: string; install: string; ok?: (out: string) => boolean }
 
 const CHECKS: Check[] = [
   {
     name: 'Node.js 18+',
-    argv: ['node', '--version'],
+    showVersion: true,
     required: true,
     why: 'usage numbers, the usage card and the status line',
     install: 'https://nodejs.org · brew install node · sudo apt install nodejs · sudo pacman -S nodejs · winget install OpenJS.NodeJS',
     ok: out => Number(out.replace(/^v/, '').split('.')[0]) >= 18,
   },
-  { name: 'git', argv: ['git', '--version'], required: true, why: 'the repo column', install: 'https://git-scm.com' },
-  { name: 'gh (GitHub CLI), signed in', argv: ['gh', 'auth', 'status'], required: false, why: 'CI runs, pull requests and private GitHub repos', install: 'https://cli.github.com, then gh auth login' },
-  { name: 'glab (GitLab CLI)', argv: ['glab', '--version'], required: false, why: 'pipelines, merge requests and private GitLab projects', install: 'https://gitlab.com/gitlab-org/cli' },
+  { name: 'git', showVersion: true, required: true, why: 'the repo column', install: 'https://git-scm.com' },
+  { name: 'gh (GitHub CLI), signed in', showVersion: false, required: false, why: 'CI runs, pull requests and private GitHub repos', install: 'https://cli.github.com, then gh auth login' },
+  { name: 'glab (GitLab CLI)', showVersion: true, required: false, why: 'pipelines, merge requests and private GitLab projects', install: 'https://gitlab.com/gitlab-org/cli' },
 ]
+
+type Probe = { found: boolean; version: string }
+
+// Whether a program answered, and the first line it printed.
+async function probe(pending: Promise<RunResult>, check: Check): Promise<Probe> {
+  try {
+    const { exitCode, stdout, stderr } = await pending
+    const version = (stdout || stderr || '').trim().split('\n')[0] ?? ''
+    return { found: exitCode === 0 && (check.ok ? check.ok(version) : true), version }
+  } catch {
+    return { found: false, version: '' }
+  }
+}
+
+// The four programs the doctor checks, each command written out in full.
+async function probeAll($: EngineInterface): Promise<Probe[]> {
+  const [node, git, gh, glab] = CHECKS as [Check, Check, Check, Check]
+  const DOCTOR = { timeoutMs: 5000 }
+  return [
+    await probe($.process.run(['node', '--version'], DOCTOR), node),
+    await probe($.process.run(['git', '--version'], DOCTOR), git),
+    await probe($.process.run(['gh', 'auth', 'status'], DOCTOR), gh),
+    await probe($.process.run(['glab', '--version'], DOCTOR), glab),
+  ]
+}
 
 // What the band shows at a width: the scene and caption, then usage, then
 // the repo column (idle.tsx WIDTH).
@@ -339,16 +392,11 @@ const BAND_WIDTH = { usage: 28 + 46 + 40, repo: 28 + 46 + 40 + 46 }
 
 async function doctorText($: EngineInterface, columns = 80): Promise<string> {
   const lines = ['TamaGoxtix doctor', '']
-  for (const check of CHECKS) {
-    let found = false
-    let version = ''
-    try {
-      const { exitCode, stdout, stderr } = await $.process.run(check.argv, { timeoutMs: 5000 })
-      version = (stdout || stderr).trim().split('\n')[0] ?? ''
-      found = exitCode === 0 && (check.ok ? check.ok(version) : true)
-    } catch {}
+  const probes = await probeAll($)
+  for (const [i, check] of CHECKS.entries()) {
+    const { found, version } = probes[i] ?? { found: false, version: '' }
     const mark = found ? '✔' : check.required ? '✖' : '○'
-    lines.push(`${mark} ${check.name}${found && version && check.argv[1] === '--version' ? `  (${version})` : ''}`)
+    lines.push(`${mark} ${check.name}${found && version && check.showVersion ? `  (${version})` : ''}`)
     if (!found) lines.push(`    needed for ${check.why}${check.required ? '' : ' (optional)'}`, `    install: ${check.install}`)
   }
   const pet = await read($, showPet)
@@ -377,8 +425,8 @@ function formatCount(n: number): string {
   return String(Math.round(n))
 }
 
-function resetIn(iso?: string): string {
-  const ms = iso ? Date.parse(iso) - Date.now() : NaN
+function resetIn(now: number, iso?: string): string {
+  const ms = iso ? Date.parse(iso) - now : NaN
   if (!Number.isFinite(ms) || ms <= 0) return ''
   const h = Math.floor(ms / 3_600_000)
   const m = Math.floor((ms % 3_600_000) / 60_000)
@@ -389,8 +437,8 @@ function resetIn(iso?: string): string {
 const LEVELS = ' ▁▂▃▄▅▆▇█'
 
 // Monday to Sunday of the current week, from the usage summary's days.
-function thisWeek(data: TamaUsage | null) {
-  const today = new Date()
+function thisWeek(data: TamaUsage | null, now: number) {
+  const today = new Date(now)
   today.setHours(0, 0, 0, 0)
   const monday = new Date(today)
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
@@ -430,43 +478,49 @@ async function applyPalette($: EngineInterface, choice: string): Promise<TamaPal
   const next = await loadPalette($, choice)
   await update($, palette, () => next)
   // the chat theme file is rewritten only where the chat uses it
-  if ((await readClaudeSettings($)).theme === 'custom:tamagoxtix') {
-    await $.fs.write(`${await claudeDir($)}/themes/tamagoxtix.json`, JSON.stringify(claudeTheme(next), null, 2) + '\n')
-  }
-  if (await herdrPane($)) {
-    try {
-      await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.sidebar-refresh'])
-      await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.theme-refresh'])
-    } catch {}
-  }
+  if ((await readClaudeSettings($)).theme === 'custom:tamagoxtix') await writeChatTheme($, next)
+  await refreshHerdr($)
   return next
+}
+
+// The chat theme file, ~/.claude/themes/tamagoxtix.json, from the palette.
+async function writeChatTheme($: EngineInterface, pal: TamaPalette): Promise<void> {
+  const dir = await claudeDir($)
+  await $.fs.write(`${dir}/themes/tamagoxtix.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
 }
 
 // Loads what the drawings read. Runs at the session's start and again after
 // a /clear, which leaves the session's values behind without a new start.
-// TamaGoxtix was called tamaclaude before 2.0: carry its choices over once,
+// TamaGoxtix was called tamaclaude before 2.0: carry its files over once
+// (tamaclaude/<file> to tamagoxtix/<file>, never over one already there),
 // and point Claude Code's settings at the renamed status line and theme.
-const LEGACY_FILES = ['config/config.json', 'state/rerolls.json', 'state/icons.json', 'state/limits.json']
+// The old file's text, when there is one and no new file yet; else null.
+async function legacyText($: EngineInterface, from: string, to: string): Promise<string | null> {
+  try {
+    if (!(await $.fs.exists(from)) || (await $.fs.exists(to))) return null
+    return await $.fs.read(from)
+  } catch {
+    return null
+  }
+}
 
 async function migrateLegacy($: EngineInterface) {
-  const configBase = (await $.env.get('XDG_CONFIG_HOME')) ?? `${await home($)}/.config`
-  const stateBase = (await $.env.get('XDG_STATE_HOME')) ?? `${await home($)}/.local/state`
-  for (const file of LEGACY_FILES) {
-    const [kind, name] = file.split('/') as [string, string]
-    const base = kind === 'config' ? configBase : stateBase
-    const from = `${base}/tamaclaude/${name}`
-    const to = `${base}/tamagoxtix/${name}`
-    try {
-      if ((await $.fs.exists(from)) && !(await $.fs.exists(to))) await $.fs.write(to, await $.fs.read(from))
-    } catch {}
-  }
+  const base = await configBase($)
+  const state = await stateBase($)
+  const config = await legacyText($, `${base}/tamaclaude/config.json`, `${base}/tamagoxtix/config.json`)
+  if (config !== null) await $.fs.write(`${base}/tamagoxtix/config.json`, config)
+  const rerolls = await legacyText($, `${state}/tamaclaude/rerolls.json`, `${state}/tamagoxtix/rerolls.json`)
+  if (rerolls !== null) await $.fs.write(`${state}/tamagoxtix/rerolls.json`, rerolls)
+  const icons = await legacyText($, `${state}/tamaclaude/icons.json`, `${state}/tamagoxtix/icons.json`)
+  if (icons !== null) await $.fs.write(`${state}/tamagoxtix/icons.json`, icons)
+  const limitsText = await legacyText($, `${state}/tamaclaude/limits.json`, `${state}/tamagoxtix/limits.json`)
+  if (limitsText !== null) await $.fs.write(`${state}/tamagoxtix/limits.json`, limitsText)
   const settings = await readClaudeSettings($)
   const oldLine = JSON.stringify(settings.statusLine ?? '').includes('/tamaclaude/statusline/')
   const oldTheme = settings.theme === 'custom:tamaclaude'
   if (!oldLine && !oldTheme) return
   const script = oldLine ? await installStatuslineFiles($) : null
-  const pal = await loadPalette($)
-  if (oldTheme) await $.fs.write(`${await claudeDir($)}/themes/tamagoxtix.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
+  if (oldTheme) await writeChatTheme($, await loadPalette($))
   await editClaudeSettings($, s => {
     if (script) s.statusLine = { type: 'command', command: `node "${script}"`, padding: 0, refreshInterval: 30 }
     if (oldTheme) s.theme = 'custom:tamagoxtix'
@@ -480,9 +534,9 @@ async function loadSession($: EngineInterface) {
   const [pal, pet] = [await loadPalette($), await loadMonster($)]
   await update($, palette, () => pal)
   await update($, monster, () => pet)
-  const now = Date.now()
+  const now = await $.clock.now()
   await update($, idleSince, () => now)
-  const saved = await readJson($, await statePath($, 'limits.json'), {})
+  const saved = await readJson($, `${await stateBase($)}/tamagoxtix/limits.json`, {})
   if (saved.windows?.length) await update($, limits, () => saved.windows ?? [])
   const pref = await $.store.get('showPet')
   await update($, showPet, () => pref !== false)
@@ -492,15 +546,17 @@ async function loadSession($: EngineInterface) {
 
 // ---- the powerline status line ----
 
-const STATUSLINE_FILES = ['statusline.mjs', 'palettes.mjs', 'powerline.mjs', 'forge.mjs']
-
-// Copies the status line script to a folder that survives plugin updates
-// (the plugin's own folder moves with each version) and returns its path.
+// Copies the status line script (and the three files it imports) from the
+// plugin's scripts/ to ~/.local/state/tamagoxtix/statusline/, a folder that
+// survives plugin updates (the plugin's own folder moves with each version),
+// and returns the script's path.
 async function installStatuslineFiles($: EngineInterface): Promise<string> {
-  const dir = await statePath($, 'statusline')
-  for (const file of STATUSLINE_FILES) {
-    await $.fs.write(`${dir}/${file}`, await $.fs.read(`${pluginRoot($)}/scripts/${file}`))
-  }
+  const dir = `${await stateBase($)}/tamagoxtix/statusline`
+  const src = `${$.plugin.root}/scripts`
+  await $.fs.write(`${dir}/statusline.mjs`, await $.fs.read(`${src}/statusline.mjs`))
+  await $.fs.write(`${dir}/palettes.mjs`, await $.fs.read(`${src}/palettes.mjs`))
+  await $.fs.write(`${dir}/powerline.mjs`, await $.fs.read(`${src}/powerline.mjs`))
+  await $.fs.write(`${dir}/forge.mjs`, await $.fs.read(`${src}/forge.mjs`))
   return `${dir}/statusline.mjs`
 }
 
@@ -513,32 +569,35 @@ type ClaudeSettings = { statusLine?: unknown; theme?: unknown; [key: string]: un
 // - only the keys `change` touches differ, and the result is read back: when
 //   it does not parse, the file the person had is put back.
 // Returns null on success, else why nothing was changed.
+// Only the commands `/tamagoxtix statusline on|off` and `/tamagoxtix theme
+// on|off` (and the one-time tamaclaude migration) call this; it changes the
+// `statusLine` or `theme` key of ~/.claude/settings.json and nothing else.
 async function editClaudeSettings($: EngineInterface, change: (s: ClaudeSettings) => void): Promise<string | null> {
-  const path = `${await claudeDir($)}/settings.json`
+  const dir = await claudeDir($)
   let original = ''
   let settings: ClaudeSettings = {}
-  if (await $.fs.exists(path)) {
-    original = await $.fs.read(path)
+  if (await $.fs.exists(`${dir}/settings.json`)) {
+    original = await $.fs.read(`${dir}/settings.json`)
     if (original.trim()) {
       try {
         const parsed: unknown = JSON.parse(original)
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object')
         settings = parsed as ClaudeSettings
       } catch {
-        return `${path} is not valid JSON, so tamagoxtix left it alone. Fix it (or remove the broken part) and run the command again.`
+        return `${dir}/settings.json is not valid JSON, so tamagoxtix left it alone. Fix it (or remove the broken part) and run the command again.`
       }
     }
-    const backup = `${path}.tamagoxtix-backup`
-    if (original && !(await $.fs.exists(backup))) await $.fs.write(backup, original)
+    if (original && !(await $.fs.exists(`${dir}/settings.json.tamagoxtix-backup`))) {
+      await $.fs.write(`${dir}/settings.json.tamagoxtix-backup`, original)
+    }
   }
   change(settings)
-  const text = JSON.stringify(settings, null, 2) + '\n'
-  await $.fs.write(path, text)
+  await $.fs.write(`${dir}/settings.json`, JSON.stringify(settings, null, 2) + '\n')
   try {
-    JSON.parse(await $.fs.read(path))
+    JSON.parse(await $.fs.read(`${dir}/settings.json`))
   } catch {
-    if (original) await $.fs.write(path, original)
-    return `Could not write ${path}; it was put back as it was.`
+    if (original) await $.fs.write(`${dir}/settings.json`, original)
+    return `Could not write ${dir}/settings.json; it was put back as it was.`
   }
   return null
 }
@@ -580,7 +639,7 @@ async function setChatTheme($: EngineInterface, on: boolean): Promise<string> {
   if (on) {
     const before = await readClaudeSettings($)
     const current = typeof before.theme === 'string' ? before.theme : undefined
-    await $.fs.write(`${await claudeDir($)}/themes/tamagoxtix.json`, JSON.stringify(claudeTheme(pal), null, 2) + '\n')
+    await writeChatTheme($, pal)
     const refused = await editClaudeSettings($, s => {
       s.theme = 'custom:tamagoxtix'
     })
@@ -709,7 +768,8 @@ export const register: Register = on => {
     mainTurn = e.turnId
     // the prompt was sent: no draft in the box anymore
     await update($, drafting, () => false)
-    await update($, turn, () => ({ startedAt: Date.now(), tokens: 0 }))
+    const startedAt = await $.clock.now()
+    await update($, turn, () => ({ startedAt, tokens: 0 }))
 
     // the icon may have changed since (a pick, a reroll, herdr spreading
     // icons so no two agents share one): read it again each turn
@@ -727,10 +787,7 @@ export const register: Register = on => {
       // herdr's sidebar is plain text: send it a new face a few times a second
       sidebarTimer = $.clock.every(300, () => {
         frame++
-        void herdr($, [
-          'pane', 'report-metadata', pane, '--source', HERDR_SOURCE,
-          '--token', `monster=${iconToken(icon, 'working', { set, frame })}`,
-        ]).catch(() => {})
+        void reportFace($, pane, iconToken(icon, 'working', { set, frame }))
       })
     }
     return started
@@ -750,8 +807,8 @@ export const register: Register = on => {
       if (chunk.kind === 'stop' && chunk.usage) {
         const exact = chunk.usage.output_tokens
         await update($, turn, t => (t ? { ...t, tokens: (base ?? t.tokens) + exact } : t))
-      } else if (Date.now() - lastPush > 400) {
-        lastPush = Date.now()
+      } else if ((await $.clock.now()) - lastPush > 400) {
+        lastPush = await $.clock.now()
         const estimate = Math.round(chars / 4)
         await update($, turn, t => {
           if (!t) return t
@@ -771,7 +828,7 @@ export const register: Register = on => {
     sidebarTimer?.cancel()
     sidebarTimer = null
     await update($, turn, () => null)
-    const now = Date.now()
+    const now = await $.clock.now()
     await update($, idleSince, () => now)
     void refreshUsage($)
     void refreshGithub($)
@@ -786,10 +843,9 @@ export const register: Register = on => {
       const windows = e.rateLimits.map(l => ({ kind: l.kind, percentUsed: l.percentUsed, resetsAt: l.resetsAt }))
       await update($, limits, () => windows as TamaLimit[])
       try {
-        await $.fs.write(
-          await statePath($, 'limits.json'),
-          JSON.stringify({ updatedAt: Date.now(), windows }, null, 2),
-        )
+        const state = await stateBase($)
+        const updatedAt = await $.clock.now()
+        await $.fs.write(`${state}/tamagoxtix/limits.json`, JSON.stringify({ updatedAt, windows }, null, 2))
       } catch {}
     }
     return measured
@@ -801,6 +857,7 @@ export const register: Register = on => {
     if ((e.surface !== 'terminal' && e.surface !== 'desktop')) return next(e)
     const [pal, pet, current] = [await read($, palette), await read($, monster), await read($, turn)]
     if (!pal || !pet) return next(e)
+    const now = await $.clock.now()
     const { Client } = $.ui.resolve(e)
     return (
       <Client module="./spinner.tsx"
@@ -810,7 +867,7 @@ export const register: Register = on => {
           palette: pal,
           mode: e.props.mode,
           word: e.props.message ?? e.props.word,
-          startedAt: current?.startedAt ?? Date.now(),
+          startedAt: current?.startedAt ?? now,
           tokens: current?.tokens ?? 0,
         }}
       />
@@ -842,6 +899,7 @@ export const register: Register = on => {
       await read($, github),
     ]
     if (!pal || !pet || !show) return next(e)
+    const now = await $.clock.now()
     const { Client } = $.ui.resolve(e)
     return (
       <Client module="./idle.tsx"
@@ -849,10 +907,10 @@ export const register: Register = on => {
         props={{
           monster: pet,
           palette: pal,
-          idleSince: since || Date.now(),
+          idleSince: since || now,
           todayCount: data?.today.tokens ?? null,
           limits: windows,
-          week: thisWeek(data),
+          week: thisWeek(data, now),
           github: repo,
           columns: e.props.bodyColumns,
           nodeMissing: await read($, nodeMissing),
@@ -919,6 +977,7 @@ export const register: Register = on => {
     ]
     const p = pal ?? (resolvePalette('beach') as TamaPalette)
     if (!data) return next(e)
+    const now = await $.clock.now()
     const width = Math.max(60, Math.min(78, (e.viewport?.columns ?? 100) - 4))
 
     const title = (text: string) => (
@@ -950,7 +1009,7 @@ export const register: Register = on => {
       const pct = l?.percentUsed ?? 0
       const color = !l ? p.muted : pct >= 90 ? p.red : pct >= 70 ? p.orange : p.cyan
       const [full, empty] = meter(pct / 100, 24)
-      const reset = resetIn(l?.resetsAt)
+      const reset = resetIn(now, l?.resetsAt)
       return (
         <Text mono>
           <Text mono color={p.fg}>{label.padEnd(8)}</Text>
@@ -977,7 +1036,7 @@ export const register: Register = on => {
     const dayLabels = days.map(d => d.date.slice(8).padEnd(4)).join('')
 
     // today by hour: one bar per hour, the current one in the accent color
-    const hourNow = new Date().getHours()
+    const hourNow = new Date(now).getHours()
     const hourRows = columnRows(data.today.hours.map(h => h.tokens), 3)
     const hourChart = hourRows.map(row => (
       <Text mono>
@@ -1080,8 +1139,8 @@ export const register: Register = on => {
 
     if (sub === 'reroll' || sub === 'icon') {
       const key = await seedKey($)
-      const picksPath = await statePath($, 'icons.json')
-      const picks = await readJson($, picksPath, {})
+      const state = await stateBase($)
+      const picks = await readJson($, `${state}/tamagoxtix/icons.json`, {})
       if (sub === 'icon') {
         if (!arg) {
           const current = (await read($, monster))?.icon
@@ -1091,13 +1150,12 @@ export const register: Register = on => {
         if (!iconByName(arg)) return { text: `Unknown icon "${arg}". Try one of: ${ICONS.map(i => i.name).join(', ')}` }
         picks[key] = arg
       } else {
-        const rollsPath = await statePath($, 'rerolls.json')
-        const rolls = await readJson($, rollsPath, {})
+        const rolls = await readJson($, `${state}/tamagoxtix/rerolls.json`, {})
         rolls[key] = (rolls[key] ?? 0) + 1
-        await $.fs.write(rollsPath, JSON.stringify(rolls, null, 2))
+        await $.fs.write(`${state}/tamagoxtix/rerolls.json`, JSON.stringify(rolls, null, 2))
         delete picks[key]
       }
-      await $.fs.write(picksPath, JSON.stringify(picks, null, 2))
+      await $.fs.write(`${state}/tamagoxtix/icons.json`, JSON.stringify(picks, null, 2))
       const pet = await loadMonster($)
       await update($, monster, () => pet)
       await paintSidebar($, pet, 'idle')
@@ -1119,12 +1177,7 @@ export const register: Register = on => {
     if (sub === 'icons') {
       if (arg !== 'nerd' && arg !== 'plain' && arg !== 'emoji') return { text: 'Usage: /tamagoxtix icons nerd|plain' }
       await writeConfig($, { icons: arg })
-      if (await herdrPane($)) {
-        try {
-          await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.sidebar-refresh'])
-          await herdr($, ['plugin', 'action', 'invoke', 'tamagoxtix.theme-refresh'])
-        } catch {}
-      }
+      await refreshHerdr($)
       return {
         text:
           arg === 'nerd'

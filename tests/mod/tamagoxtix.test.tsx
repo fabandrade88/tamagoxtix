@@ -7,6 +7,7 @@ describe('tamagoxtix', () => {
   test('the spinner becomes the monster once the session has started', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -22,6 +23,7 @@ describe('tamagoxtix', () => {
   test('the spinner module draws the monster, the clock and the coins', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -42,6 +44,7 @@ describe('tamagoxtix', () => {
   test('between turns the monster hangs out above the prompt, scene after scene', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -65,6 +68,7 @@ describe('tamagoxtix', () => {
     })
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -100,6 +104,7 @@ describe('tamagoxtix', () => {
     }
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     on('process.run', ($, e) =>
@@ -129,6 +134,7 @@ describe('tamagoxtix', () => {
   test('/tamagoxtix help lists the commands and draws them as a card', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -154,6 +160,7 @@ describe('tamagoxtix', () => {
   test('the desktop app draws the spinner, the idle band and the cards too', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -207,6 +214,7 @@ describe('tamagoxtix', () => {
     const files = new Map([['/home/me/.claude/settings.json', '{ "model": "opus", }']])
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/home/me' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     memoryFs(on, files)
@@ -224,6 +232,7 @@ describe('tamagoxtix', () => {
     const files = new Map([['/home/me/.claude/settings.json', original]])
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/home/me' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     memoryFs(on, files)
@@ -247,6 +256,7 @@ describe('tamagoxtix', () => {
   test('/tamagoxtix doctor reports what is there and what is missing', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     on('process.run', ($, e) => {
@@ -267,6 +277,7 @@ describe('tamagoxtix', () => {
   test('with under 3 rows the band shrinks to one line, and doctor says why', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -292,6 +303,7 @@ describe('tamagoxtix', () => {
     let remotes = 0
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('session.cwd', () => ({ value: '/tmp/not-a-repo' }))
     on('store.get', () => ({ value: undefined }))
@@ -312,6 +324,7 @@ describe('tamagoxtix', () => {
   test('without node the idle band says how to get the usage numbers', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     on('process.run', () => {
@@ -333,6 +346,7 @@ describe('tamagoxtix', () => {
   test('/tamagoxtix palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)
@@ -349,6 +363,7 @@ describe('tamagoxtix', () => {
   test('an unknown palette is refused without writing anything', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
     on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
     await $.session.start(START)

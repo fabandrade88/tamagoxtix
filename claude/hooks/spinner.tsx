@@ -7,7 +7,7 @@
 import type { ClientModule, ClientSurface } from 'claude-code'
 
 import { scene, workSceneAt } from './lib/scenes.mjs'
-import { sceneRows } from './art'
+import { sceneRows } from './art.tsx'
 import type { TamaMonster, TamaPalette } from '../types'
 
 export type SpinnerProps = {
