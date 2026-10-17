@@ -321,6 +321,47 @@ describe('tamagoxtix', () => {
     expect(remotes).toBe(1)
   })
 
+  test('the repo column reads stars, issues, pull requests and CI from gh', async ($, on) => {
+    const asked: string[] = []
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    mock.env(on, { HOME: '/nonexistent' })
+    const clock = mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('session.cwd', () => ({ value: '/tmp/repo' }))
+    on('store.get', () => ({ value: undefined }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    on('process.run', ($, e) => {
+      const cmd = e.argv.join(' ')
+      asked.push(cmd)
+      const out = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '' } })
+      if (cmd === 'git remote get-url origin') return out('git@github.com:octo/demo.git\n')
+      if (cmd === 'git rev-parse --abbrev-ref HEAD') return out('main\n')
+      if (cmd.startsWith('git ')) return out('')
+      if (cmd === 'gh api repos/octo/demo') return out(JSON.stringify({ open_issues_count: 7, stargazers_count: 42 }))
+      if (cmd.startsWith('gh pr list -R octo/demo')) return out(JSON.stringify([{ number: 1 }, { number: 2 }]))
+      if (cmd.startsWith('gh run list -R octo/demo --branch main')) return out(JSON.stringify([{ status: 'completed', conclusion: 'success' }]))
+      throw new Error('ENOENT')
+    })
+    on('http.fetch', () => {
+      throw new Error('no network in this test')
+    })
+    await $.session.start(START)
+    // the repo column is refreshed in the background after the start
+    await clock.advance(1)
+    const ui = await $.ui.mount({
+      plugin: 'tamagoxtix',
+      surface: 'terminal',
+      component: 'AbovePrompt',
+      props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 200 } as never,
+    })
+    await ui.advance(320)
+    expect(asked).toContain('gh api repos/octo/demo')
+    expect(await ui.find({ in: 'tamagoxtix-idle', type: 'Text', text: /42/ })).toBeDefined()
+    // 7 open issues on GitHub include the 2 pull requests
+    expect(await ui.find({ in: 'tamagoxtix-idle', type: 'Text', text: /\b5\b/ })).toBeDefined()
+    await ui.unmount()
+  })
+
   test('without node the idle band says how to get the usage numbers', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
     mock.env(on, { HOME: '/nonexistent' })

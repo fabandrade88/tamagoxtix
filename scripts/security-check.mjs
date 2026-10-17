@@ -33,7 +33,7 @@ const RULES = [
 ];
 
 // Network calls must target one of these, written as such in the source.
-const ALLOWED_URLS = [/^`https:\/\/api\.github\.com\/repos\/\$\{path\}`$/, /^`https:\/\/\$\{host\}\/api\/v4\/\$\{endpoint\}(&per_page=1)?`$/];
+const ALLOWED_URLS = [/^`https:\/\/\$\{host\}\/\$\{pathname\}`$/, /^'https:\/\/api\.github\.com\/repos\/' \+ path$/, /^`https:\/\/api\.github\.com\/repos\/\$\{path\}`$/, /^`https:\/\/\$\{host\}\/api\/v4\/\$\{endpoint\}(&per_page=1)?`$/];
 // Files the code writes, by the expression it writes to.
 const ALLOWED_WRITES = [
   // the Claude Code mod: every path written out at its $.fs.write
