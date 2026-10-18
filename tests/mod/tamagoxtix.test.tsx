@@ -3,9 +3,16 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 const START = { cwd: '/tmp', surface: 'terminal', isInteractive: true } as const
 const SPINNER = { word: 'Coalescing', message: null, suffix: '…', mode: 'thinking' } as const
 
+// Beneath the plugins: the engine's own drawing, here an empty Box.
+function nothingElse($: any, e: any) {
+  const { Box } = $.ui.resolve(e)
+  return <Box />
+}
+
 describe('tamagoxtix', () => {
   test('the spinner becomes the monster once the session has started', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -22,6 +29,7 @@ describe('tamagoxtix', () => {
 
   test('the spinner module draws the monster, the clock and the coins', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -43,6 +51,7 @@ describe('tamagoxtix', () => {
 
   test('between turns the monster hangs out above the prompt, scene after scene', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -67,6 +76,7 @@ describe('tamagoxtix', () => {
       return { text, cursor: e.start + e.inputText.length }
     })
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -103,6 +113,7 @@ describe('tamagoxtix', () => {
       week: { start: 0, tokens: 40e6 },
     }
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -133,6 +144,7 @@ describe('tamagoxtix', () => {
 
   test('/tamagoxtix help lists the commands and draws them as a card', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -159,6 +171,7 @@ describe('tamagoxtix', () => {
 
   test('the desktop app draws the spinner, the idle band and the cards too', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -213,6 +226,7 @@ describe('tamagoxtix', () => {
   test('a settings.json that is not valid JSON is never overwritten', async ($, on) => {
     const files = new Map([['/home/me/.claude/settings.json', '{ "model": "opus", }']])
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/home/me' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -231,6 +245,7 @@ describe('tamagoxtix', () => {
     const original = JSON.stringify({ model: 'opus', permissions: { allow: ['Bash(ls)'] }, theme: 'dark' }, null, 2)
     const files = new Map([['/home/me/.claude/settings.json', original]])
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/home/me' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -255,6 +270,7 @@ describe('tamagoxtix', () => {
 
   test('/tamagoxtix doctor reports what is there and what is missing', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -276,6 +292,7 @@ describe('tamagoxtix', () => {
 
   test('with under 3 rows the band shrinks to one line, and doctor says why', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -301,6 +318,7 @@ describe('tamagoxtix', () => {
 
   test('on a narrow screen the monster keeps its shape, and under 44 columns the band is one line', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -329,9 +347,35 @@ describe('tamagoxtix', () => {
     expect(result.text).toContain('40 columns, room for one line')
   })
 
+  test('another plugin drawing in the band stays, above the monster', async ($, on) => {
+    on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text key="handover">handover ready</Text>
+    })
+    mock.env(on, { HOME: '/nonexistent' })
+    mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
+    on('session.id', () => ({ value: 'test-session' }))
+    on('command.register', () => ({ value: { command: 'tamagoxtix' } }))
+    await $.session.start(START)
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const ui = await $.ui.mount({
+        plugin: 'tamagoxtix',
+        surface,
+        component: 'AbovePrompt',
+        props: { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 100 } as never,
+      })
+      await ui.advance(320)
+      expect(await ui.find({ type: 'Text', text: /handover ready/ })).toBeDefined()
+      expect(await ui.find({ in: 'tamagoxtix-idle', type: 'Text', text: /waiting for you/ })).toBeDefined()
+      await ui.unmount()
+    }
+  })
+
   test('outside a repository git is asked once, not on every turn', async ($, on) => {
     let remotes = 0
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -354,6 +398,7 @@ describe('tamagoxtix', () => {
   test('the repo column reads stars, issues, pull requests and CI from gh', async ($, on) => {
     const asked: string[] = []
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     const clock = mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -394,6 +439,7 @@ describe('tamagoxtix', () => {
 
   test('without node the idle band says how to get the usage numbers', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -416,6 +462,7 @@ describe('tamagoxtix', () => {
 
   test('/tamagoxtix palette lists every palette', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))
@@ -433,6 +480,7 @@ describe('tamagoxtix', () => {
 
   test('an unknown palette is refused without writing anything', async ($, on) => {
     on('session.start', ($, e) => ({ cwd: e.cwd }))
+    on('ui.render', nothingElse)
     mock.env(on, { HOME: '/nonexistent' })
     mock.clock(on, { now: Date.parse('2026-10-14T12:00:00Z') })
     on('session.id', () => ({ value: 'test-session' }))

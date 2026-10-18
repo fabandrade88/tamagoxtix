@@ -974,6 +974,8 @@ export const register: Register = on => {
     if ((e.surface !== 'terminal' && e.surface !== 'desktop') || e.props.isWorking) return next(e)
     // a survey owns the band; with under 3 rows the monster shrinks to a line
     if (e.props.hasSurvey || e.props.maxRows < 1) return next(e)
+    // other plugins' bands stay: theirs on top, the monster under them
+    const others = await next(e)
     const mode = e.props.maxRows >= 3 ? 'full' : 'compact'
     const pal = await read($, palette)
     const pet = await read($, monster)
@@ -982,7 +984,7 @@ export const register: Register = on => {
     const data = await read($, usage)
     const windows = await read($, limits)
     const repo = await read($, github)
-    if (!pal || !pet || !show) return next(e)
+    if (!pal || !pet || !show) return others
     const now = await $.clock.now()
     const missingNode = await read($, nodeMissing)
     const cheering = await read($, drafting)
@@ -1003,8 +1005,15 @@ export const register: Register = on => {
       face,
       icons: String(config.icons ?? 'nerd'),
     }
-    const { Client } = $.ui.resolve(e)
-    return <Client module="./idle.tsx" key="tamagoxtix-idle" props={idleProps} />
+    const { Box, Client } = $.ui.resolve(e)
+    const idle = <Client module="./idle.tsx" key="tamagoxtix-idle" props={idleProps} />
+    if (!others) return idle
+    return (
+      <Box flexDirection="column">
+        {others}
+        {idle}
+      </Box>
+    )
   })
 
   // ---- /tamagoxtix help: the commands as a card, with what is on ----

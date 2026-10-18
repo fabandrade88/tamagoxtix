@@ -373,6 +373,12 @@ install only their own folder. Screenshots are real captures
 
 ## Changelog
 
+### 2.1.6
+
+- Shares the band above the prompt: other plugins drawing there (a handover
+  band, a review band…) stay visible, stacked above the monster, instead of
+  disappearing while it shows. Thanks to schreibse for the suggestion.
+
 ### 2.1.5
 
 - The monsters keep their shape on small screens: a scene row never wraps,
