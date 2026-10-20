@@ -10,7 +10,7 @@
       "name": "tamagoxtix",
       "source": "./claude",
       "description": "A little pixel monster in place of the spinner, a usage card, palettes and a powerline status line.",
-      "version": "2.1.6",
+      "version": "2.1.7",
       "category": "productivity"
     }
   ]

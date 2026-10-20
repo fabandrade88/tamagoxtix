@@ -51,6 +51,7 @@ const MAX_MARKS = 10
 const GAP = 3 // columns between the monster and the text
 const MIN_WIDTH = 44 // narrower than this: one line, no monster
 const NARROW = 64 // narrower than this: a tighter gap
+const SPRITE_WIDTH = 32 // a scene with its effects: the text beside it stays put from scene to scene
 
 const MODE_LABEL: Record<string, string> = {
   requesting: 'is calling',
@@ -131,7 +132,7 @@ const Spinner: ClientModule<SpinnerProps, State> = (props, surface: ClientSurfac
   // the monster keeps its width; the text beside it is cut at the edge
   return (
     <Box flexDirection="row" gap={columns < NARROW ? 2 : GAP} marginTop={1}>
-      <Box flexDirection="column" flexShrink={0}>{sprite}</Box>
+      <Box flexDirection="column" flexShrink={0} width={SPRITE_WIDTH}>{sprite}</Box>
       <Box flexDirection="column" flexShrink={1}>
         <Text mono wrap="truncate-end">
           <Text mono color={palette.accent} bold>

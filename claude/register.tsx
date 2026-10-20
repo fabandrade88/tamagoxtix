@@ -466,8 +466,10 @@ async function probeAll($: EngineInterface): Promise<Probe[]> {
 
 // What the band shows at a width: the scene and caption, then usage, then
 // the repo column (idle.tsx WIDTH).
-// Under `min` columns the band and the spinner become one line.
-const BAND_WIDTH = { min: 44, usage: 28 + 46 + 40, repo: 28 + 46 + 40 + 46 }
+// Under `min` columns the band and the spinner become one line. Scene 32, gap
+// 3, caption at least 24, then a separator (7) and usage 30, then another
+// separator and the repo column (8 + 2 + 36): idle.tsx WIDTH.
+const BAND_WIDTH = { min: 44, usage: 32 + 3 + 24 + 7 + 30, repo: 32 + 3 + 24 + 7 + 30 + 7 + 46 }
 
 async function doctorText($: EngineInterface, columns = 80): Promise<string> {
   const lines = ['TamaGoxtix doctor', '']
@@ -479,7 +481,7 @@ async function doctorText($: EngineInterface, columns = 80): Promise<string> {
     if (!found) lines.push(`    needed for ${check.why}${check.required ? '' : ' (optional)'}`, `    install: ${check.install}`)
   }
   const pet = await read($, showPet)
-  const fits = columns >= BAND_WIDTH.repo ? 'scene, usage and repo' : columns >= BAND_WIDTH.usage ? 'scene and usage (the repo column needs 160)' : columns >= BAND_WIDTH.min ? 'scene only (usage needs 114 columns, the repo column 160)' : 'one line (the scene needs 44 columns)'
+  const fits = columns >= BAND_WIDTH.repo ? 'scene, usage and repo' : columns >= BAND_WIDTH.usage ? `scene and usage (the repo column needs ${BAND_WIDTH.repo})` : columns >= BAND_WIDTH.min ? `scene only (usage needs ${BAND_WIDTH.usage} columns, the repo column ${BAND_WIDTH.repo})` : 'one line (the scene needs 44 columns)'
   lines.push(
     '',
     pet ? 'Monster band: on (/tamagoxtix pet off hides it)' : '✖ Monster band: hidden by /tamagoxtix pet off (pet on brings it back)',
@@ -1002,6 +1004,9 @@ export const register: Register = on => {
       nodeMissing: missingNode,
       cheering,
       compact: mode === 'compact',
+      // the blank row above the band only when a fourth row is free, so the
+      // band never asks for more rows than it has and scrolls
+      margin: e.props.maxRows >= 4,
       face,
       icons: String(config.icons ?? 'nerd'),
     }
@@ -1024,10 +1029,12 @@ export const register: Register = on => {
     const { Box, Text } = $.ui.resolve(e)
     const p = (await read($, palette)) ?? (resolvePalette('beach') as TamaPalette)
     const sections = await helpSections($)
-    const width = Math.max(60, Math.min(96, (e.viewport?.columns ?? 100) - 4))
+    // as wide as the terminal allows; on a narrow one each row is cut at the edge
+    const width = Math.max(24, Math.min(96, (e.viewport?.columns ?? 100) - 4))
+    const commandWidth = width >= 80 ? 36 : 28
     return (
       <Box flexDirection="column" borderStyle="round" borderColor={p.muted} paddingX={2} width={width}>
-        <Text mono>
+        <Text mono wrap="truncate-end">
           <Text mono color={p.orange} bold>
             tamagoxtix
           </Text>
@@ -1035,13 +1042,13 @@ export const register: Register = on => {
         </Text>
         {sections.map(section => (
           <Box flexDirection="column" marginTop={1}>
-            <Text mono>
+            <Text mono wrap="truncate-end">
               <Text mono color={p.orange}>▍</Text>
               <Text mono color={p.fg} bold>{` ${section.title}`}</Text>
             </Text>
             {section.rows.map(row => (
-              <Text mono>
-                <Text mono color={p.accent}>{`  ${row.command.padEnd(36)}`}</Text>
+              <Text mono wrap="truncate-end">
+                <Text mono color={p.accent}>{`  ${row.command.padEnd(commandWidth)}`}</Text>
                 <Text mono color={p.muted}>{row.does}</Text>
                 {row.state !== undefined && (
                   <Text mono color={row.state ? p.green : p.muted} bold={row.state}>
@@ -1071,10 +1078,13 @@ export const register: Register = on => {
     const p = pal ?? (resolvePalette('beach') as TamaPalette)
     if (!data) return next(e)
     const now = await $.clock.now()
-    const width = Math.max(60, Math.min(78, (e.viewport?.columns ?? 100) - 4))
+    // as wide as the terminal allows: the charts and meters shrink to the
+    // room inside the border, so no row ever wraps
+    const width = Math.max(24, Math.min(78, (e.viewport?.columns ?? 100) - 4))
+    const inner = width - 6
 
     const title = (text: string) => (
-      <Text mono>
+      <Text mono wrap="truncate-end">
         <Text mono color={p.accent}>▍</Text>
         <Text mono color={p.fg} bold>
           {` ${text}`}
@@ -1084,7 +1094,7 @@ export const register: Register = on => {
 
     const sprite = pet
       ? spriteRuns(pet, 'idle', 0).map(runs => (
-          <Text mono>
+          <Text mono wrap="truncate">
             {runs.map(run => (
               <Text
                 color={run.fg ? slotColor(pet, run.fg, p) : undefined}
@@ -1101,10 +1111,10 @@ export const register: Register = on => {
       const l = windows.find(w => w.kind === kind)
       const pct = l?.percentUsed ?? 0
       const color = !l ? p.muted : pct >= 90 ? p.red : pct >= 70 ? p.orange : p.cyan
-      const [full, empty] = meter(pct / 100, 24)
+      const [full, empty] = meter(pct / 100, Math.max(6, Math.min(24, inner - 26)))
       const reset = resetIn(now, l?.resetsAt)
       return (
-        <Text mono>
+        <Text mono wrap="truncate-end">
           <Text mono color={p.fg}>{label.padEnd(8)}</Text>
           <Text mono color={color}>{full}</Text>
           <Text mono color={p.muted}>{empty}</Text>
@@ -1116,42 +1126,48 @@ export const register: Register = on => {
       )
     }
 
-    // last 14 days: bars three cells wide, today in the accent color
-    const days = data.days
+    // last 14 days: bars three cells wide, today in the accent color; on a
+    // narrow terminal one cell wide, then only the days that fit
+    const dayBar = inner >= 56 ? 3 : 2
+    const days = data.days.slice(-Math.max(1, Math.floor(inner / (dayBar + 1))))
     const dayRows = columnRows(days.map(d => d.tokens), 5)
     const dayChart = dayRows.map(row => (
-      <Text mono>
+      <Text mono wrap="truncate">
         {row.map((ch, i) => (
-          <Text mono color={i === row.length - 1 ? p.accent : p.blue}>{ch.repeat(3) + ' '}</Text>
+          <Text mono color={i === row.length - 1 ? p.accent : p.blue}>{ch.repeat(dayBar) + ' '}</Text>
         ))}
       </Text>
     ))
-    const dayLabels = days.map(d => d.date.slice(8).padEnd(4)).join('')
+    const dayLabels = days.map(d => d.date.slice(8).padEnd(dayBar + 1)).join('')
 
-    // today by hour: one bar per hour, the current one in the accent color
+    // today by hour: one bar per hour, the current one in the accent color,
+    // two cells wide, or one on a narrow terminal
+    const hourBar = inner >= 72 ? 2 : inner >= 48 ? 1 : 0
     const hourNow = new Date(now).getHours()
     const hourRows = columnRows(data.today.hours.map(slot => slot.tokens), 3)
     const hourChart = hourRows.map(row => (
-      <Text mono>
+      <Text mono wrap="truncate">
         {row.map((ch, i) => (
-          <Text mono color={i === hourNow ? p.accent : p.green}>{ch.repeat(2) + ' '}</Text>
+          <Text mono color={i === hourNow ? p.accent : p.green}>{ch.repeat(Math.max(1, hourBar)) + (hourBar ? ' ' : '')}</Text>
         ))}
       </Text>
     ))
-    const hourLabels = data.today.hours.map(slot => (slot.hour % 6 === 0 ? String(slot.hour) : '').padEnd(3)).join('')
+    const hourLabels = data.today.hours
+      .map(slot => (slot.hour % 6 === 0 ? String(slot.hour) : '').padEnd(hourBar + 1))
+      .join('')
 
     return (
       <Box flexDirection="column" borderStyle="round" borderColor={p.muted} paddingX={2} paddingY={0} width={width}>
-        <Box flexDirection="row" gap={3}>
-          <Box flexDirection="column">{sprite}</Box>
-          <Box flexDirection="column">
-            <Text mono>
+        <Box flexDirection="row" gap={inner >= 50 ? 3 : 2}>
+          <Box flexDirection="column" flexShrink={0}>{sprite}</Box>
+          <Box flexDirection="column" flexShrink={1}>
+            <Text mono wrap="truncate-end">
               <Text mono color={p.accent} bold>
                 {pet?.name ?? 'tamagoxtix'}
               </Text>
               <Text mono color={p.muted}>{`  ·  token usage  ·  ${p.label}`}</Text>
             </Text>
-            <Text mono>
+            <Text mono wrap="truncate-end">
               <Text mono color={p.muted}>today </Text>
               <Text mono color={p.yellow} bold>
                 {formatCount(data.today.tokens)}
@@ -1165,7 +1181,7 @@ export const register: Register = on => {
                 {formatCount(data.week.tokens)}
               </Text>
             </Text>
-            <Text mono color={p.muted}>{`${formatCount(data.today.output)} written by Claude today`}</Text>
+            <Text mono wrap="truncate-end" color={p.muted}>{`${formatCount(data.today.output)} written by Claude today`}</Text>
           </Box>
         </Box>
         <Text mono> </Text>
@@ -1173,18 +1189,18 @@ export const register: Register = on => {
         {limitRow('5h', 'five_hour')}
         {limitRow('week', 'seven_day')}
         <Text mono> </Text>
-        <Text mono>
-          {title('last 14 days')}
+        <Text mono wrap="truncate-end">
+          {title(days.length === 14 ? 'last 14 days' : `last ${days.length} days`)}
           <Text mono color={p.muted}>{`   max ${formatCount(Math.max(...days.map(d => d.tokens)))}`}</Text>
         </Text>
         {dayChart}
-        <Text mono color={p.muted}>{dayLabels}</Text>
+        <Text mono wrap="truncate" color={p.muted}>{dayLabels}</Text>
         <Text mono> </Text>
         {title('today by hour')}
         {hourChart}
-        <Text mono color={p.muted}>{hourLabels}</Text>
+        <Text mono wrap="truncate" color={p.muted}>{hourLabels}</Text>
         <Text mono> </Text>
-        <Text mono color={p.muted}>/tamagoxtix help for all the commands</Text>
+        <Text mono wrap="truncate-end" color={p.muted}>/tamagoxtix help for all the commands</Text>
       </Box>
     )
   })

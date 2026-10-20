@@ -140,6 +140,17 @@ describe('tamagoxtix', () => {
     expect(await ui.find({ type: 'Text', text: /last 14 days/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /today by hour/ })).toBeDefined()
     await ui.unmount()
+    // a narrow terminal: thinner bars and only the days that fit, no wrapping
+    const narrow = await $.ui.mount({
+      plugin: 'tamagoxtix',
+      surface: 'terminal',
+      component: 'CommandOutput',
+      props: { command: 'tamagoxtix', args: '', text: result.text ?? '', isErrored: false } as never,
+      viewport: { columns: 50, rows: 40 },
+    } as never)
+    expect(await narrow.find({ type: 'Text', text: /last 13 days/ })).toBeDefined()
+    expect(await narrow.find({ type: 'Text', text: /today by hour/ })).toBeDefined()
+    await narrow.unmount()
   })
 
   test('/tamagoxtix help lists the commands and draws them as a card', async ($, on) => {
@@ -312,7 +323,7 @@ describe('tamagoxtix', () => {
     }
     const result = await $.command.run({ command: 'tamagoxtix', args: 'doctor', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
     expect(result.text).toContain('Monster band: on')
-    expect(result.text).toContain('100 columns, room for scene only')
+    expect(result.text).toContain('100 columns, room for scene and usage')
     expect(result.text).toContain('shrinks to one line')
   })
 

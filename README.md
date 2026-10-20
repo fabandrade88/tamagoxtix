@@ -373,6 +373,20 @@ install only their own folder. Screenshots are real captures
 
 ## Changelog
 
+### 2.1.7
+
+- **Steady band**: each column of the band keeps its width and every line is
+  cut with `…` instead of wrapping, so a new scene or a longer caption never
+  makes the band taller and the prompt and its menus no longer jump. The
+  blank row above the band only shows when a fourth row is free.
+- **The usage card fits narrow terminals**: `/tamagoxtix` follows the
+  terminal's width (no 60-column minimum), with thinner bars, only the days
+  that fit and shorter meters, so its charts no longer break apart; the help
+  card follows the width too.
+- The spinner's monster keeps a fixed width, so the text beside it stays put.
+- The usage column shows from 96 columns and the repo column from 149
+  (were 114 and 160); `/tamagoxtix doctor` says so.
+
 ### 2.1.6
 
 - Shares the band above the prompt: other plugins drawing there (a handover

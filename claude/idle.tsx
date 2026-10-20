@@ -50,6 +50,8 @@ export type IdleProps = {
   cheering?: boolean
   /** Under 3 rows free: one line with the monster's icon instead of the band. */
   compact?: boolean
+  /** A blank row above the band, when there is a row to spare for it. */
+  margin?: boolean
   /** The monster's icon, a glyph or a symbol (icons.mjs). */
   face?: string
 }
@@ -60,8 +62,13 @@ const GLYPHS = {
   plain: { branch: '⎇', issue: '◎', pr: '⇄', tag: '⌁', star: '★', ok: '✓', fail: '✗', pending: '●' },
 }
 
-// Widths of the band's parts, to decide what fits.
-const WIDTH = { scene: 28, caption: 46, usage: 40, github: 46 }
+// Widths of the band's parts. Each column keeps its width, so a new scene
+// or a longer caption never pushes the others or wraps a row: the caption
+// column alone shrinks (down to `captionMin`), and a column that does not fit
+// is left out. register.tsx BAND_WIDTH repeats the sums for the doctor.
+const WIDTH = { scene: 32, sceneNarrow: 27, caption: 46, captionMin: 24, usage: 30, octocat: 8, repo: 36 }
+const GAP = 3
+const SEPARATOR = GAP + 1 + GAP
 // Under this many columns the scene and a readable caption do not fit side by
 // side, so the band becomes one line; under NARROW the gap tightens.
 const MIN_BAND = 44
@@ -144,7 +151,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
     const l = props.limits.find(w => w.kind === kind)
     if (!l) {
       return (
-        <Text mono>
+        <Text mono wrap="truncate-end">
           <Text mono color={palette.fg}>{label.padEnd(6)}</Text>
           <Text mono color={palette.muted}>{'▱'.repeat(BAR_CELLS)} no reading yet</Text>
         </Text>
@@ -153,7 +160,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
     const color = l.percentUsed >= 90 ? palette.red : l.percentUsed >= 70 ? palette.orange : palette.cyan
     const reset = resetIn(l.resetsAt, now)
     return (
-      <Text mono>
+      <Text mono wrap="truncate-end">
         <Text mono color={palette.fg}>{label.padEnd(6)}</Text>
         <Text mono color={color}>{bar(l.percentUsed)}</Text>
         <Text mono color={color} bold>{` ${String(Math.round(l.percentUsed)).padStart(3)}%`}</Text>
@@ -163,7 +170,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
   }
   const max = Math.max(1, ...props.week.map(d => d.tokens))
   const weekRow = (
-    <Text mono>
+    <Text mono wrap="truncate-end">
       <Text mono color={palette.fg}>{'days'.padEnd(6)}</Text>
       {props.week.map(d => {
         const level = d.isFuture ? ' ' : (LEVELS[d.tokens ? Math.max(1, Math.round((d.tokens / max) * 8)) : 0] ?? '·')
@@ -179,10 +186,12 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
     </Text>
   )
   const separator = () => (
-    <Box flexDirection="column">{['│', '│', '│'].map(line => <Text mono color={palette.muted}>{line}</Text>)}</Box>
+    <Box flexDirection="column" flexShrink={0}>{['│', '│', '│'].map(line => <Text mono color={palette.muted}>{line}</Text>)}</Box>
   )
-  const showUsage = props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage
-  const showGithub = props.github !== null && props.columns >= WIDTH.scene + WIDTH.caption + WIDTH.usage + WIDTH.github
+  const base = WIDTH.scene + GAP + WIDTH.captionMin
+  const showUsage = props.columns >= base + SEPARATOR + WIDTH.usage
+  const showGithub =
+    props.github !== null && props.columns >= base + SEPARATOR + WIDTH.usage + SEPARATOR + WIDTH.octocat + 2 + WIDTH.repo
 
   // the repository: an octocat for GitHub or a fox for GitLab, then name and
   // stars, branch and its state,
@@ -190,10 +199,10 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
   const g = props.github
   const icon = props.icons === 'nerd' ? GLYPHS.nerd : GLYPHS.plain
   const githubColumn = g && (
-    <Box flexDirection="row" gap={2}>
-      <Box flexDirection="column">
+    <Box flexDirection="row" gap={2} flexShrink={0}>
+      <Box flexDirection="column" flexShrink={0}>
         {(g.forge === 'gitlab' ? gitlabFox(frame) : octocat(frame, 'fg')).map(runs => (
-          <Text mono>
+          <Text mono wrap="truncate">
             {runs.map(run => (
               <Text
                 color={run.fg ? (palette as Record<string, string>)[run.fg] ?? palette.fg : undefined}
@@ -205,8 +214,8 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
           </Text>
         ))}
       </Box>
-      <Box flexDirection="column">
-        <Text mono>
+      <Box flexDirection="column" width={WIDTH.repo}>
+        <Text mono wrap="truncate-end">
           <Text mono color={palette.fg} bold>
             {g.repo}
           </Text>
@@ -217,13 +226,13 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
             </Text>
           )}
         </Text>
-        <Text mono>
+        <Text mono wrap="truncate-end">
           <Text mono color={palette.magenta}>{`${icon.branch} ${g.branch}`}</Text>
           {g.ahead > 0 && <Text mono color={palette.green}>{` ↑${g.ahead}`}</Text>}
           {g.behind > 0 && <Text mono color={palette.orange}>{` ↓${g.behind}`}</Text>}
           {g.dirty > 0 && <Text mono color={palette.yellow}>{` ●${g.dirty}`}</Text>}
         </Text>
-        <Text mono>
+        <Text mono wrap="truncate-end">
           {g.version && <Text mono color={palette.cyan}>{`${icon.tag} ${g.version}  `}</Text>}
           {g.issues !== null && <Text mono color={palette.green}>{`${icon.issue} ${g.issues}  `}</Text>}
           {g.prs !== null && <Text mono color={palette.blue}>{`${icon.pr} ${g.prs}`}</Text>}
@@ -233,10 +242,14 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
   )
 
   // the scene keeps its width; the text beside it is cut at the edge
+  // (on a narrow screen the scene's width leaves out the widest effects)
+  const narrow = props.columns < NARROW
   return (
-    <Box flexDirection="row" gap={props.columns < NARROW ? 2 : 3} marginTop={1}>
-      <Box flexDirection="column" flexShrink={0}>{sceneRows(Text, monster, palette, data)}</Box>
-      <Box flexDirection="column" flexShrink={1}>
+    <Box flexDirection="row" gap={narrow ? 2 : GAP} marginTop={props.margin === false ? 0 : 1}>
+      <Box flexDirection="column" flexShrink={0} width={narrow ? WIDTH.sceneNarrow : WIDTH.scene}>
+        {sceneRows(Text, monster, palette, data)}
+      </Box>
+      <Box flexDirection="column" flexShrink={1} width={WIDTH.caption}>
         <Text mono wrap="truncate-end">
           <Text mono color={palette.accent} bold>
             {monster.name}
@@ -253,7 +266,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
         ) : (
         <Text mono wrap="truncate-end">
           {props.todayCount !== null && (
-            <Text mono>
+            <Text mono wrap="truncate-end">
               <Text mono color={palette.yellow}>$ {formatCount(props.todayCount)}</Text>
               <Text mono color={palette.muted}> tokens today · </Text>
             </Text>
@@ -264,7 +277,7 @@ const Idle: ClientModule<IdleProps, State> = (props, surface: ClientSurface<Stat
       </Box>
       {showUsage && separator()}
       {showUsage && (
-        <Box flexDirection="column">
+        <Box flexDirection="column" flexShrink={0} width={WIDTH.usage}>
           {limitRow('5h', 'five_hour')}
           {limitRow('week', 'seven_day')}
           {weekRow}
